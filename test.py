@@ -32,8 +32,8 @@ WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Flashcards Game")
 
-font_main = pygame.font.SysFont("ibmplexsansthaisemibold", 50)
-font_hint = pygame.font.SysFont("ibmplexsansthaisemibold", 25)
+font_main = pygame.font.Font("Font/IBMPlexSansThai-SemiBold.ttf", 50)
+font_hint = pygame.font.Font("Font/IBMPlexSansThai-SemiBold.ttf", 25)
 
 current_index = 0
 show_answer = False
