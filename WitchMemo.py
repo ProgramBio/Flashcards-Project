@@ -27,7 +27,7 @@ current_music = None
 def background_music(path, volume, loop):
     global current_music
     try:
-        if intro_time > 1:
+        if intro_time > 3:
             path = "Music/So cold.mp3"
             pygame.mixer.music.load(path)
             pygame.mixer.music.set_volume(1)
@@ -42,7 +42,10 @@ def background_music(path, volume, loop):
         print("Error Please Check :", e)
 
 def get_font(size):
-    return pygame.font.Font("Font/SansThai.ttf", size) #นำเข้าฟอนต์จากโฟลเดอร์
+    if intro_time > 3:
+        return pygame.font.SysFont("Wingdings", size)
+    else:
+        return pygame.font.Font("Font/PixelMedium.ttf", size)
 
 def click_sound():
     pygame.mixer.Sound("SFX/Click.mp3").play()
@@ -51,7 +54,7 @@ def sfx_func(sfx):
     pygame.mixer.Sound(sfx).play()
 
 def screen_color():
-    if intro_time > 1:
+    if intro_time > 3:
         SCREEN.fill("black")
     else:
         SCREEN.fill(basecolor)
@@ -60,7 +63,7 @@ def transition_to(next_function, next_music_path):
     click_sound()
     clock = pygame.time.Clock()
     fade_surface = pygame.Surface((screen_width, screen_height))
-    if intro_time > 1:
+    if intro_time > 3:
         fade_surface.fill((138, 3, 3))
         fade_speed = 6
     else:
@@ -158,15 +161,15 @@ def options():
 def main_menu():
     background_music("Music/034. Memory.mp3", 0.5, -1)
     while True:
-        if intro_time > 1:
+        if intro_time > 3:
             SCREEN.fill("black")
+            MENU_TEXT = pygame.font.Font("Font/PixelMedium.ttf", 75).render(user_name +" " + computer_name +" ?", True, "red")
         else:
             SCREEN.blit(BG, (0, 0))
-        
+            MENU_TEXT = get_font(100).render("Witch's Memo", True, triadic_2)
 
         MENU_MOUSE_POS = pygame.mouse.get_pos()
 
-        MENU_TEXT = get_font(100).render("MAIN MENU", True, triadic_2)
         MENU_RECT = MENU_TEXT.get_rect(center=(640, 100))
 
         PLAY_BUTTON = Button(image=pygame.image.load("Image/Play Rect.png"), pos=(640, 250), 
@@ -194,9 +197,10 @@ def main_menu():
                     click_sound()
                     pygame.mixer.music.stop()
                     pygame.time.wait(500)
-                    sfx_func("SFX/OMG Laugh.mp3")
-                    pygame.time.wait(2500)
-                    transition_to(intro, "Music/034. Memory.mp3") #อาจมาแก้ทีหลัง แต่แบบนี้ก็ดี
+                    transition_to(intro, "003. Your Best Friend.mp3") #อาจมาแก้ทีหลัง แต่แบบนี้ก็ดี
+                    if intro_time > 3:
+                        sfx_func("SFX/OMG Laugh.mp3")
+                        pygame.time.wait(2500)
                     pygame.quit()
                     sys.exit()
 
@@ -211,9 +215,14 @@ def intro():
     fade_speed = 2  #ความเร็วการจาง
     intro_time += 1
 
-    logo = pygame.image.load("Image/star.png")
-    logo = pygame.transform.scale(logo, (300, 300))
-    logo_rect = logo.get_rect(center=(screen_width//2, screen_height//2))
+    if intro_time > 3:
+        logo = pygame.image.load("Image/Cahethel.png")
+        logo = pygame.transform.scale(logo, (300, 300))
+        logo_rect = logo.get_rect(center=(screen_width//2, screen_height//2))
+    else:
+        logo = pygame.image.load("Image/star.png")
+        logo = pygame.transform.scale(logo, (300, 300))
+        logo_rect = logo.get_rect(center=(screen_width//2, screen_height//2))
 
     while True:
         SCREEN.blit(logo, logo_rect)
