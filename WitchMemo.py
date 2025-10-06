@@ -2,8 +2,10 @@
 import pygame, sys, random, socket, getpass
 from button import Button
 pygame.init()
+pygame.mixer.init()
 
-SCREEN = pygame.display.set_mode((1280, 720))
+screen_width, screen_height = 1280, 720
+SCREEN = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Menu")
 
 computer_name = socket.gethostname()
@@ -19,11 +21,69 @@ for i in range(3): #แปลงรหัสสีตาม Triadic Theory
     if triadic_3[i] > 255:
         triadic_3[i] -= 255
 
+current_music = None
+def background_music(path, volume, loop):
+    global current_music
+    try:
+        if current_music != path:
+            current_music = path
+            pygame.mixer.music.fadeout(500)
+            pygame.mixer.music.load(path)
+            pygame.mixer.music.set_volume(volume)
+            pygame.mixer.music.play(loop)
+    except Exception as e:
+        print("Error Please Check :", e)
+
 def get_font(size):
     return pygame.font.Font("Font/SansThai.ttf", size) #นำเข้าฟอนต์จากโฟลเดอร์
 
+def transition_to(next_function, next_music_path):
+    clock = pygame.time.Clock()
+    fade_surface = pygame.Surface((screen_width, screen_height))
+    fade_surface.fill((255, 255, 255))
+    alpha = 0
+    fade_speed = 12
+    start_volume = pygame.mixer.music.get_volume()
+
+    current_scene = SCREEN.copy()
+
+    while alpha < 255:
+        SCREEN.blit(current_scene, (0, 0))          # แสดงฉากเดิม
+        fade_surface.set_alpha(alpha)               # เพิ่มความขาว
+        SCREEN.blit(fade_surface, (0, 0))
+        pygame.display.update()
+        clock.tick(120)
+
+        current_vol = max(0, start_volume * (1 - alpha / 255))
+        pygame.mixer.music.set_volume(current_vol)
+
+        alpha += fade_speed
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+    background_music(next_music_path, 0.5, -1)
+
+    alpha = 255
+    while alpha > 0:
+        fade_surface.set_alpha(alpha)
+        SCREEN.blit(fade_surface, (0, 0))
+        pygame.display.update()
+        clock.tick(120)
+        alpha -= fade_speed
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+    next_function()
+
+
 def play():
-    pygame.display.set_caption("Play")
+    background_music("Music/003. Your Best Friend.mp3", 0.5, -1)
     while True:
         PLAY_MOUSE_POS = pygame.mouse.get_pos()
         SCREEN.fill(basecolor)
@@ -41,9 +101,10 @@ def play():
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if PLAY_BACK.checkForInput(PLAY_MOUSE_POS):
-                    main_menu()
+                    transition_to(main_menu, "Music/034. Memory.mp3")
         pygame.display.update()
 def options():
+    background_music("Music/097. But The Earth Refused To Die.mp3", 0.5, -1)
     while True:
         OPTIONS_MOUSE_POS = pygame.mouse.get_pos()
 
@@ -65,11 +126,12 @@ def options():
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if OPTIONS_BACK.checkForInput(OPTIONS_MOUSE_POS):
-                    main_menu()
+                    transition_to(main_menu, "Music/034. Memory.mp3")
 
         pygame.display.update()
 
 def main_menu():
+    background_music("Music/034. Memory.mp3", 0.5, -1)
     while True:
         SCREEN.blit(BG, (0, 0))
 
@@ -89,22 +151,53 @@ def main_menu():
         for button in [PLAY_BUTTON, OPTIONS_BUTTON, QUIT_BUTTON]:
             button.changeColor(MENU_MOUSE_POS)
             button.update(SCREEN)
-            pygame.mixer_music.load("Music/003. Your Best Friend.mp3")
-            pygame.mixer.music.set_volume(0.25)
-            pygame.mixer.music.play(-1)
+            
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if PLAY_BUTTON.checkForInput(MENU_MOUSE_POS):
-                    play()
+                    transition_to(play, "Music/003. Your Best Friend.mp3")
                 if OPTIONS_BUTTON.checkForInput(MENU_MOUSE_POS):
-                    options()
+                    transition_to(options, "Music/097. But The Earth Refused To Die.mp3")
                 if QUIT_BUTTON.checkForInput(MENU_MOUSE_POS):
                     pygame.quit()
                     sys.exit()
 
         pygame.display.update()
 
-main_menu()
+def intro():
+    clock = pygame.time.Clock()
+    fade_surface = pygame.Surface((screen_width, screen_height))
+    fade_surface.fill((255, 255, 255))
+    alpha = 255  # เริ่มจากจอขาว
+    fade_speed = 2  #ความเร็วการจาง
+
+    logo = pygame.image.load("Image/star.png")
+    logo = pygame.transform.scale(logo, (300, 300))
+    logo_rect = logo.get_rect(center=(screen_width//2, screen_height//2))
+
+    while True:
+        SCREEN.blit(logo, logo_rect)
+        fade_surface.set_alpha(alpha)
+        SCREEN.blit(fade_surface, (0, 0))
+
+        pygame.display.update()
+        clock.tick(60)
+
+        # ลดความทึบลง
+        if alpha > 0:
+            alpha -= fade_speed
+        else:
+            transition_to(main_menu, "Music/034. Memory.mp3")
+            return
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                transition_to(main_menu, "Music/034. Memory.mp3")
+                return
+
+intro()
