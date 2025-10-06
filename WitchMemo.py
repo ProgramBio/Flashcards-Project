@@ -21,11 +21,18 @@ for i in range(3): #แปลงรหัสสีตาม Triadic Theory
     if triadic_3[i] > 255:
         triadic_3[i] -= 255
 
+intro_time = 0
+
 current_music = None
 def background_music(path, volume, loop):
     global current_music
     try:
-        if current_music != path:
+        if intro_time > 1:
+            path = "Music/So cold.mp3"
+            pygame.mixer.music.load(path)
+            pygame.mixer.music.set_volume(1)
+            pygame.mixer.music.play(-1)
+        if current_music != path and intro_time == 1:
             current_music = path
             pygame.mixer.music.fadeout(500)
             pygame.mixer.music.load(path)
@@ -37,12 +44,29 @@ def background_music(path, volume, loop):
 def get_font(size):
     return pygame.font.Font("Font/SansThai.ttf", size) #นำเข้าฟอนต์จากโฟลเดอร์
 
+def click_sound():
+    pygame.mixer.Sound("SFX/Click.mp3").play()
+
+def sfx_func(sfx):
+    pygame.mixer.Sound(sfx).play()
+
+def screen_color():
+    if intro_time > 1:
+        SCREEN.fill("black")
+    else:
+        SCREEN.fill(basecolor)
+
 def transition_to(next_function, next_music_path):
+    click_sound()
     clock = pygame.time.Clock()
     fade_surface = pygame.Surface((screen_width, screen_height))
-    fade_surface.fill((255, 255, 255))
+    if intro_time > 1:
+        fade_surface.fill((138, 3, 3))
+        fade_speed = 6
+    else:
+        fade_surface.fill((255, 255, 255))
+        fade_speed = 12
     alpha = 0
-    fade_speed = 12
     start_volume = pygame.mixer.music.get_volume()
 
     current_scene = SCREEN.copy()
@@ -62,6 +86,7 @@ def transition_to(next_function, next_music_path):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
+
                 sys.exit()
 
     background_music(next_music_path, 0.5, -1)
@@ -86,7 +111,7 @@ def play():
     background_music("Music/003. Your Best Friend.mp3", 0.5, -1)
     while True:
         PLAY_MOUSE_POS = pygame.mouse.get_pos()
-        SCREEN.fill(basecolor)
+        screen_color()
         PLAY_TEXT = get_font(45).render("Hey " + user_name + ", buddy it's not time to play.", True, triadic_2)
         PLAY_RECT = PLAY_TEXT.get_rect(center = (640, 260))
         SCREEN.blit(PLAY_TEXT, PLAY_RECT)
@@ -104,11 +129,11 @@ def play():
                     transition_to(main_menu, "Music/034. Memory.mp3")
         pygame.display.update()
 def options():
-    background_music("Music/097. But The Earth Refused To Die.mp3", 0.5, -1)
+    background_music("Music/Anticipation.mp3", 0.5, -1)
     while True:
         OPTIONS_MOUSE_POS = pygame.mouse.get_pos()
 
-        SCREEN.fill(basecolor)
+        screen_color()
 
         OPTIONS_TEXT = get_font(45).render("You thing I had made this? You fool.", True, triadic_2)
         OPTIONS_RECT = OPTIONS_TEXT.get_rect(center=(640, 260))
@@ -133,7 +158,11 @@ def options():
 def main_menu():
     background_music("Music/034. Memory.mp3", 0.5, -1)
     while True:
-        SCREEN.blit(BG, (0, 0))
+        if intro_time > 1:
+            SCREEN.fill("black")
+        else:
+            SCREEN.blit(BG, (0, 0))
+        
 
         MENU_MOUSE_POS = pygame.mouse.get_pos()
 
@@ -160,19 +189,27 @@ def main_menu():
                 if PLAY_BUTTON.checkForInput(MENU_MOUSE_POS):
                     transition_to(play, "Music/003. Your Best Friend.mp3")
                 if OPTIONS_BUTTON.checkForInput(MENU_MOUSE_POS):
-                    transition_to(options, "Music/097. But The Earth Refused To Die.mp3")
+                    transition_to(options, "Music/Anticipation.mp3")
                 if QUIT_BUTTON.checkForInput(MENU_MOUSE_POS):
+                    click_sound()
+                    pygame.mixer.music.stop()
+                    pygame.time.wait(500)
+                    sfx_func("SFX/OMG Laugh.mp3")
+                    pygame.time.wait(2500)
+                    transition_to(intro, "Music/034. Memory.mp3") #อาจมาแก้ทีหลัง แต่แบบนี้ก็ดี
                     pygame.quit()
                     sys.exit()
 
         pygame.display.update()
 
 def intro():
+    global intro_time
     clock = pygame.time.Clock()
     fade_surface = pygame.Surface((screen_width, screen_height))
     fade_surface.fill((255, 255, 255))
     alpha = 255  # เริ่มจากจอขาว
     fade_speed = 2  #ความเร็วการจาง
+    intro_time += 1
 
     logo = pygame.image.load("Image/star.png")
     logo = pygame.transform.scale(logo, (300, 300))
