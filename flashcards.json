@@ -6,13 +6,5 @@
     {
         "question": "Dog",
         "answer": "สุนัข"
-    },
-    {
-        "question": "Cat",
-        "answer": "แมว"
-    },
-    {
-        "question": "Water",
-        "answer": "น้ำ"
     }
 ]
