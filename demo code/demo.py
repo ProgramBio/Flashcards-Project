@@ -24,7 +24,7 @@ TEXT = (18, 18, 20)
 ACCENT = (200, 170, 255)
 DANGER = (200, 80, 80)
 
-DECKS_DIR = "decks"
+DECKS_DIR = "decksdemo"
 INDEX_FILE = os.path.join(DECKS_DIR, "decks_index.json")
 ACHIEV_FILE = "achievements.json"
 
