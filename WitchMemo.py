@@ -255,7 +255,9 @@ def create_deck(style_path):
 
     while True:
         CREATE_MOUSE_POS = pygame.mouse.get_pos()
-        screen_color()
+        # screen_color()
+        editdeck3_bg = pygame.image.load("Image/Background/editing_deck3.png")
+        SCREEN.blit(editdeck3_bg, (0, 0))
 
         PROMPT = get_font(55, 1).render("Enter New Deck Name:", True, triadic_2)
         SCREEN.blit(PROMPT, PROMPT.get_rect(center=(screen_width//2, 250)))
@@ -567,7 +569,9 @@ def play_deck(deck_name):
 
     while True:
         PLAY_MOUSE_POS = pygame.mouse.get_pos()
-        screen_color()
+        # screen_color()
+        editdeck3_bg = pygame.image.load("Image/Background/editing_deck3.png")
+        SCREEN.blit(editdeck3_bg, (0, 0))
 
         TITLE = get_font(70, 1).render(deck_name, True, triadic_3)
         TITLE_RECT = TITLE.get_rect(center=(screen_width//2, 200))
@@ -578,11 +582,11 @@ def play_deck(deck_name):
         SCREEN.blit(TEXT, TEXT_RECT)
 
         EDIT_BUTTON = Button(image=None, pos=(screen_width//2, 600),
-                             text_input="EDIT DECK", font=get_font(75, 1),
-                             base_color=(200,180,255), hovering_color=(255,255,255))
+                            text_input="EDIT DECK", font=get_font(75, 1),
+                            base_color=(200,180,255), hovering_color=(255,255,255))
         BACK_BUTTON = Button(image=None, pos=(screen_width//2, 800),
-                             text_input="BACK", font=get_font(75, 1),
-                             base_color=triadic_3, hovering_color=triadic_2)
+                            text_input="BACK", font=get_font(75, 1),
+                            base_color=triadic_3, hovering_color=triadic_2)
         for button in [EDIT_BUTTON, BACK_BUTTON]:
             button.changeColor(PLAY_MOUSE_POS)
             button.update(SCREEN)
@@ -633,7 +637,9 @@ def edit_deck(deck_name):
     while True:
         EDIT_MOUSE_POS = pygame.mouse.get_pos()
         dt = clock.tick(60) / 16.67  # ล็อก FPS
-        screen_color()
+        # screen_color()
+        cw_bg = pygame.image.load("Image/Background/crafting-witch.png")
+        SCREEN.blit(cw_bg, (0, 0))
 
         if not 23 - len(input_word):
             word_ismax = (255, 0, 0)
