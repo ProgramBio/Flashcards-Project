@@ -61,9 +61,6 @@ def get_font(size, which_font):
         elif which_font == 2:
             return pygame.font.Font("Font/SansThai.ttf", size)
 
-def click_sound():
-    pygame.mixer.Sound("SFX/Click.mp3").play()
-
 def sfx_func(sfx):
     pygame.mixer.Sound(sfx).play()
 
@@ -189,7 +186,7 @@ def transition_to(next_function, next_music_path):
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN and not intro_time > 3:
                 if event.button == 1:
-                    click_sound()
+                    sfx_func("SFX/Click.mp3")
                     next_function()
                     return
 
@@ -210,8 +207,9 @@ def select_mode():
         PLAY_MOUSE_POS = pygame.mouse.get_pos()
         # screen_color()
         bg = pygame.image.load("Image/Background/selectmode_bg.png")
+        bg = pygame.transform.scale(bg, (screen_width, screen_height))
         SCREEN.blit(bg, (0, 0))
-        PLAY_TEXT = get_font(45, 1).render(user_name + ", please select mode to play.", True, triadic_2)
+        PLAY_TEXT = get_font(45, 1).render(user_name + ", Please Select Mode To Play.", True, triadic_2)
         PLAY_RECT = PLAY_TEXT.get_rect(center = (screen_width//2, 150))
         SCREEN.blit(PLAY_TEXT, PLAY_RECT)
 
@@ -238,13 +236,15 @@ def select_mode():
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    click_sound()
                     if STORY_BUTTON.checkForInput(PLAY_MOUSE_POS):
-                        transition_to(story_mode, "Music/003. Your Best Friend.mp3")
+                        sfx_func("SFX/Click.mp3")
+                        transition_to(story_mode, "Music/024. Bonetrousle.mp3")
                     if FREEFORALL_BUTTON.checkForInput(PLAY_MOUSE_POS):
-                        transition_to(free_for_all, "Music/Anticipation.mp3")
+                        sfx_func("SFX/Click.mp3")
+                        transition_to(free_for_all, "Music/017. Snowy.mp3")
                     if PLAY_BACK.checkForInput(PLAY_MOUSE_POS):
-                        transition_to(main_menu, "Music/034. Memory.mp3")
+                        sfx_func("SFX/Click.mp3")
+                        transition_to(main_menu, "Music/092. Reunited.mp3")
         pygame.display.update()
 
 def create_deck(style_path):
@@ -277,7 +277,7 @@ def create_deck(style_path):
                 pygame.quit(); sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    transition_to(free_for_all, "Music/Anticipation.mp3")
+                    transition_to(free_for_all, "Music/017. Snowy.mp3")
                     return
                 elif event.key == pygame.K_BACKSPACE:
                     user_input = user_input[:-1]
@@ -286,20 +286,20 @@ def create_deck(style_path):
                         fname = os.path.join(deck_dir, user_input.strip() + ".json")
                         with open(fname, "w", encoding="utf-8") as f:
                             json.dump({"style": style_path, "cards": []}, f, ensure_ascii=False, indent=4)
-                        transition_to(free_for_all, "Music/Anticipation.mp3")
+                        transition_to(free_for_all, "Music/017. Snowy.mp3")
                         return
                 else:
                     if len(user_input) < 20:
                         user_input += event.unicode
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if BACK_BUTTON.checkForInput(CREATE_MOUSE_POS):
-                    transition_to(free_for_all, "Music/Anticipation.mp3")
+                    transition_to(free_for_all, "Music/017. Snowy.mp3")
                     return
                 if CREATE_BUTTON.checkForInput(CREATE_MOUSE_POS) and user_input.strip():
                     fname = os.path.join(deck_dir, user_input.strip() + ".json")
                     with open(fname, "w", encoding="utf-8") as f:
                         json.dump({"style": style_path, "cards": []}, f, ensure_ascii=False, indent=4)
-                    transition_to(free_for_all, "Music/Anticipation.mp3")
+                    transition_to(free_for_all, "Music/017. Snowy.mp3")
                     return
 
         pygame.display.update()
@@ -307,7 +307,7 @@ def create_deck(style_path):
 
 
 def free_for_all():
-    background_music("Music/Anticipation.mp3", background_music_volume, -1)
+    background_music("Music/017. Snowy.mp3", background_music_volume, -1)
     deck_dir = "decks"
     os.makedirs(deck_dir, exist_ok=True)
 
@@ -394,22 +394,23 @@ def free_for_all():
                 scroll_offset += event.y * scroll_speed
                 scroll_offset = max(min(0, scroll_offset), -((total_rows * spacing_y) - screen_height + 300))
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                click_sound()
                 for rect, name in deck_buttons:
                     if rect.collidepoint(FREEFORALL_MOUSE_POS):
-                        transition_to(deck_choice_menu(name), "Music/Anticipation.mp3")
+                        sfx_func("SFX/Click.mp3")
+                        transition_to(deck_choice_menu(name), "Music/017. Snowy.mp3")
                         return
                 if pygame.Rect(create_x, create_y, box_w, box_h).collidepoint(FREEFORALL_MOUSE_POS):
-                    transition_to(choose_card_style, "Music/Anticipation.mp3")
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(choose_card_style, "Music/017. Snowy.mp3")
                     return
                 if BACK_BUTTON.checkForInput(FREEFORALL_MOUSE_POS):
-                    transition_to(select_mode, "Music/034. Memory.mp3")
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(select_mode, "Music/092. Reunited.mp3")
                     return
 
         pygame.display.update()
 
 def deck_choice_menu(fname):
-    background_music("Music/Anticipation.mp3", background_music_volume, -1)
     while True:
         OPTIONS_MOUSE_POS = pygame.mouse.get_pos()
         screen_color()
@@ -439,23 +440,22 @@ def deck_choice_menu(fname):
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    click_sound()
                 if OPTIONS_BACK.checkForInput(OPTIONS_MOUSE_POS):
-                    transition_to(free_for_all, "Music/034. Memory.mp3")
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(free_for_all, "Music/017. Snowy.mp3")
                 if OPTIONS_EDIT.checkForInput(OPTIONS_MOUSE_POS):
-                    transition_to(lambda: edit_deck(fname), "Music/034. Memory.mp3")
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(lambda: edit_deck(fname), "Music/017. Snowy.mp3")
                 if OPTIONS_DELETE.checkForInput(OPTIONS_MOUSE_POS):
                     try:
                         os.remove(os.path.join(f"decks/{fname}.json"))
                     except Exception as e:
                         print("Delete error", e)
                     sfx_func("SFX/boom.mp3")
-                    transition_to(free_for_all, "Music/034. Memory.mp3")
+                    transition_to(free_for_all, "Music/017. Snowy.mp3")
         pygame.display.update()
 
 def choose_card_style():
-    background_music("Music/Anticipation.mp3", background_music_volume, -1)
     scroll_offset = 0
     scroll_speed = 80  
 
@@ -542,20 +542,20 @@ def choose_card_style():
                 scroll_offset = max(min_scroll, min(scroll_offset, max_scroll))
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                click_sound()
                 for rect, path in card_buttons:
                     if rect.collidepoint(MOUSE_POS):
-                        transition_to(lambda: create_deck(path), "Music/Anticipation.mp3")
+                        sfx_func("SFX/Click.mp3")
+                        transition_to(lambda: create_deck(path), "Music/017. Snowy.mp3")
                         return
                 if BACK_BUTTON.checkForInput(MOUSE_POS):
-                    transition_to(free_for_all, "Music/Anticipation.mp3")
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(free_for_all, "Music/017. Snowy.mp3")
                     return
 
         pygame.display.update()
 
 
 def play_deck(deck_name):
-    background_music("Music/Anticipation.mp3", background_music_volume, -1)
     deck_path = os.path.join("decks", deck_name + ".json")
 
     while True:
@@ -584,12 +584,13 @@ def play_deck(deck_name):
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                click_sound()
                 if EDIT_BUTTON.checkForInput(PLAY_MOUSE_POS):
-                    transition_to(lambda: edit_deck(deck_name), "Music/Anticipation.mp3")
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(lambda: edit_deck(deck_name), "Music/017. Snowy.mp3")
                     return
                 if BACK_BUTTON.checkForInput(PLAY_MOUSE_POS):
-                    transition_to(free_for_all, "Music/Anticipation.mp3")
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(free_for_all, "Music/017. Snowy.mp3")
                     return
 
         pygame.display.update()
@@ -627,17 +628,41 @@ def edit_deck(deck_name):
         dt = clock.tick(60) / 16.67  # ล็อก FPS
         screen_color()
 
+        if not 23 - len(input_word):
+            word_ismax = (255, 0, 0)
+        else:
+            word_ismax = triadic_3
+
+        if not 23 - len(input_meaning):
+            mean_ismax = (255, 0,0 )
+        else:
+            mean_ismax = triadic_3
+
+        if input_word.strip() and input_meaning.strip() and len(words) < MAX_WORDS:
+            all_ismax = triadic_3
+        else:
+            all_ismax = (255, 0, 0)
+
         # -------------------------------
         # Title
         # -------------------------------
-        TITLE = get_font(70, 1).render(f"Edit Deck: {deck_name}", True, triadic_3)
-        SCREEN.blit(TITLE, TITLE.get_rect(center=(screen_width // 2, 100)))
+        TITLE = get_font(70, 2).render(f"Edit Deck: {deck_name}", True, triadic_3)
+        SCREEN.blit(TITLE, TITLE.get_rect(center=(screen_width // 2, 140)))
+
+        hint = get_font(35, 1).render(f"Max Characters Is 23 Per Box", True, triadic_3)
+        SCREEN.blit(hint, hint.get_rect(center=(screen_width // 2, 200)))
+
+        word_left = get_font(35, 1).render(f"Word Characters Left : {23 - len(input_word)}", True, word_ismax)
+        SCREEN.blit(word_left, word_left.get_rect(center=(screen_width//2 - 330, 350)))
+
+        mean_left = get_font(35, 1).render(f"Word Characters Left : {23 - len(input_meaning)}", True, mean_ismax)
+        SCREEN.blit(mean_left, mean_left.get_rect(center=(screen_width//2 + 340, 350)))
 
         # -------------------------------
         # กล่องใส่คำศัพท์
         # -------------------------------
-        word_box = pygame.Rect(screen_width//2 - 400, 250, 350, 70)
-        meaning_box = pygame.Rect(screen_width//2 + 70, 250, 350, 70)
+        word_box = pygame.Rect(screen_width//2 - 600, 250, 550, 70)
+        meaning_box = pygame.Rect(screen_width//2 + 70, 250, 550, 70)
 
         word_color = (220, 180, 255) if active_input == "word" else (255, 255, 255)
         meaning_color = (220, 180, 255) if active_input == "meaning" else (255, 255, 255)
@@ -647,8 +672,8 @@ def edit_deck(deck_name):
         pygame.draw.rect(SCREEN, meaning_color, meaning_box, border_radius=8)
         pygame.draw.rect(SCREEN, triadic_3, meaning_box, 3, border_radius=8)
 
-        word_text = get_font(40, 1).render(input_word or "Word", True, (90, 0, 130))
-        meaning_text = get_font(40, 1).render(input_meaning or "Meaning", True, (90, 0, 130))
+        word_text = get_font(35, 2).render(input_word or "Word", True, (90, 0, 130))
+        meaning_text = get_font(35, 2).render(input_meaning or "Meaning", True, (90, 0, 130))
         SCREEN.blit(word_text, (word_box.x + 20, word_box.y + 15))
         SCREEN.blit(meaning_text, (meaning_box.x + 20, meaning_box.y + 15))
 
@@ -657,7 +682,7 @@ def edit_deck(deck_name):
         # -------------------------------
         ADD_BUTTON = Button(image=None, pos=(screen_width//2, 400),
                             text_input="ADD WORD", font=get_font(55, 1),
-                            base_color=(200, 180, 255), hovering_color=(255, 255, 255))
+                            base_color=(200, 180, 255), hovering_color=all_ismax)
         BACK_BUTTON = Button(image=None, pos=(screen_width//2, 950),
                              text_input="BACK", font=get_font(75, 1),
                              base_color=triadic_3, hovering_color=triadic_2)
@@ -680,13 +705,13 @@ def edit_deck(deck_name):
                 continue  # ข้ามถ้าอยู่นอกจอ
 
             word_display = f"{i+1}. {item['word']}  -  {item['meaning']}"
-            word_text = get_font(35, 2).render(word_display, True, triadic_2)
+            word_text = get_font(35, 2).render(word_display, True, triadic_2) #คำกำลังกรอก
             SCREEN.blit(word_text, (screen_width//2 - 400, y_pos))
 
         # -------------------------------
         # Counter
         # -------------------------------
-        counter_text = get_font(30, 1).render(f"{len(words)}/{MAX_WORDS} words", True, triadic_2)
+        counter_text = get_font(30, 1).render(f"{len(words)}/{MAX_WORDS} words", True, triadic_2) #30 คำที่ใส่
         SCREEN.blit(counter_text, (screen_width//2 + 550, screen_height//2 - 460))
 
         # -------------------------------
@@ -712,8 +737,9 @@ def edit_deck(deck_name):
                 scroll_offset = max(min_scroll, min(scroll_offset, max_scroll))
 
             if event.type == pygame.KEYDOWN:
+                sfx_func("SFX/Click.mp3")
                 if event.key == pygame.K_ESCAPE:
-                    transition_to(deck_choice_menu(deck_name), "Music/Anticipation.mp3")
+                    transition_to(deck_choice_menu(deck_name), "Music/017. Snowy.mp3")
                     return
                 elif event.key == pygame.K_TAB:
                     active_input = "meaning" if active_input == "word" else "word"
@@ -728,33 +754,42 @@ def edit_deck(deck_name):
                         input_word, input_meaning = "", ""
                         with open(deck_path, "w", encoding="utf-8") as f:
                             json.dump(words, f, ensure_ascii=False, indent=4)
-                        click_sound()
+                    else:
+                        sfx_func("SFX/wrong.mp3")
                 else:
-                    if active_input == "word" and len(input_word) < 20:
+                    if active_input == "word" and len(input_word) < 23:
                         input_word += event.unicode
-                    elif active_input == "meaning" and len(input_meaning) < 30:
+                    elif active_input == "meaning" and len(input_meaning) < 23:
                         input_meaning += event.unicode
+                    else:
+                        sfx_func("SFX/wrong.mp3")
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if word_box.collidepoint(EDIT_MOUSE_POS):
+                    sfx_func("SFX/Click.mp3")
                     active_input = "word"
                 elif meaning_box.collidepoint(EDIT_MOUSE_POS):
+                    sfx_func("SFX/Click.mp3")
                     active_input = "meaning"
                 if ADD_BUTTON.checkForInput(EDIT_MOUSE_POS):
                     if input_word.strip() and input_meaning.strip() and len(words) < MAX_WORDS:
+                        sfx_func("SFX/Click.mp3")
                         words.append({"word": input_word.strip(), "meaning": input_meaning.strip()})
                         input_word, input_meaning = "", ""
                         with open(deck_path, "w", encoding="utf-8") as f:
                             json.dump(words, f, ensure_ascii=False, indent=4)
-                        click_sound()
+                    else:
+                        sfx_func("SFX/wrong.mp3")
                 if BACK_BUTTON.checkForInput(EDIT_MOUSE_POS):
-                    transition_to(deck_choice_menu(deck_name), "Music/Anticipation.mp3")
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(deck_choice_menu(deck_name), "Music/017. Snowy.mp3")
                     return
 
         pygame.display.update()
 
 def story_mode():
-    background_music("Music/Anticipation.mp3", background_music_volume, -1)
+    sfx_func("SFX/mus_wawa.mp3")
+    background_music("Music/024. Bonetrousle.mp3", background_music_volume, -1)
     while True:
         STORY_MODE_MOUSE_POS = pygame.mouse.get_pos()
 
@@ -776,15 +811,15 @@ def story_mode():
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    click_sound()
                     if STORY_MODE_BACK.checkForInput(STORY_MODE_MOUSE_POS):
-                        transition_to(select_mode, "Music/034. Memory.mp3")
+                        sfx_func("SFX/Click.mp3")
+                        transition_to(select_mode, "Music/092. Reunited.mp3")
 
         pygame.display.update()
 
 def options():
     global background_music_volume, ishint, answer_time
-    background_music("Music/Anticipation.mp3", background_music_volume, -1)
+    background_music("Music/005. Ruins.mp3", background_music_volume, -1)
     while True:
         OPTIONS_MOUSE_POS = pygame.mouse.get_pos()
         screen_color()
@@ -837,24 +872,22 @@ def options():
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    click_sound()
                 if OPTIONS_BACK.checkForInput(OPTIONS_MOUSE_POS):
-                    click_sound()
-                    transition_to(main_menu, "Music/034. Memory.mp3")
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(main_menu, "Music/092. Reunited.mp3")
                 if OPTIONS_FAST.checkForInput(OPTIONS_MOUSE_POS):
-                    click_sound()
+                    sfx_func("SFX/Click.mp3")
                     if ishint: ishint = False
                     else: ishint = True
                 if PLUS_BUTTON.checkForInput(OPTIONS_MOUSE_POS) and not intro_time > 3:
-                    click_sound()
+                    sfx_func("SFX/Click.mp3")
                     if event.button in (1, 4):
                         background_music_volume = min(1, background_music_volume + 0.1)
                     else:
                         background_music_volume = max(0, background_music_volume - 0.1)
                     pygame.mixer.music.set_volume(background_music_volume)
                 if MINUS_BUTTON.checkForInput(OPTIONS_MOUSE_POS) and not intro_time > 3:
-                    click_sound()
+                    sfx_func("SFX/Click.mp3")
                     if event.button in (1, 5):
                         background_music_volume = max(0, background_music_volume - 0.1)
                     else:
@@ -862,13 +895,13 @@ def options():
                     pygame.mixer.music.set_volume(background_music_volume)
 
                 if PLUS_BUTTON_ANSWER_TIME.checkForInput(OPTIONS_MOUSE_POS) and not intro_time > 3:
-                    click_sound()
+                    sfx_func("SFX/Click.mp3")
                     if event.button in (1, 4):
                         answer_time = min(30, answer_time + 1)
                     else:
                         answer_time = max(1, answer_time - 1)
                 if MINUS_BUTTON_ANSWER_TIME.checkForInput(OPTIONS_MOUSE_POS) and not intro_time > 3:
-                    click_sound()
+                    sfx_func("SFX/Click.mp3")
                     if event.button in (1, 5):
                         answer_time = max(1, answer_time - 1)
                     else:
@@ -876,7 +909,7 @@ def options():
         pygame.display.update()
 
 def main_menu():
-    background_music("Music/034. Memory.mp3", background_music_volume, -1)
+    background_music("Music/092. Reunited.mp3", background_music_volume, -1)
 
     while True:
         if intro_time > 3:
@@ -911,12 +944,14 @@ def main_menu():
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    click_sound()
                     if PLAY_BUTTON.checkForInput(MENU_MOUSE_POS):
+                        sfx_func("SFX/Click.mp3")
                         transition_to(select_mode, "Music/003. Your Best Friend.mp3")
                     if OPTIONS_BUTTON.checkForInput(MENU_MOUSE_POS):
-                        transition_to(options, "Music/Anticipation.mp3")
+                        sfx_func("SFX/Click.mp3")
+                        transition_to(options, "Music/005. Ruins.mp3")
                     if QUIT_BUTTON.checkForInput(MENU_MOUSE_POS):
+                        sfx_func("SFX/Click.mp3")
                         pygame.mixer.music.stop()
                         if intro_time > 3:
                             pygame.time.wait(500)
@@ -958,7 +993,7 @@ def intro():
         if alpha > 0:
             alpha -= fade_speed
         else:
-            transition_to(main_menu, "Music/034. Memory.mp3")
+            transition_to(main_menu, "Music/092. Reunited.mp3")
             return
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -966,8 +1001,8 @@ def intro():
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN and not intro_time > 3:
                 if event.button == 1:
-                    click_sound()
-                    transition_to(main_menu, "Music/034. Memory.mp3")
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(main_menu, "Music/092. Reunited.mp3")
                     return
 
 intro()
