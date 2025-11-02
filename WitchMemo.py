@@ -316,7 +316,9 @@ def free_for_all():
 
     while True:
         FREEFORALL_MOUSE_POS = pygame.mouse.get_pos()
-        screen_color()
+        # screen_color()
+        bg = pygame.image.load("Image/Background/selectmode_bg.png")
+        SCREEN.blit(bg, (0, 0))
 
         title_text = get_font(65, 1).render("Select Your Deck", True, triadic_3)
         SCREEN.blit(title_text, title_text.get_rect(center=(screen_width // 2, 100)))
@@ -412,8 +414,10 @@ def deck_choice_menu(fname):
     background_music("Music/Anticipation.mp3", background_music_volume, -1)
     while True:
         OPTIONS_MOUSE_POS = pygame.mouse.get_pos()
-        screen_color()
-        
+        # screen_color()
+        preparedeck_bg = pygame.image.load("Image/Background/prepare_deck.jpg")
+        SCREEN.blit(preparedeck_bg, (0, 0))
+
         #ชื่อ Deck
         OPTIONS_TEXT = get_font(45, 2).render(f"Deck: {fname}", True, triadic_2)
         OPTIONS_RECT = OPTIONS_TEXT.get_rect(center=(screen_width//2, 120))
@@ -421,15 +425,15 @@ def deck_choice_menu(fname):
 
         #
         OPTIONS_EDIT = Button(image=None, pos=(screen_width//2, 700),
-                              text_input="EDIT", font=get_font(75, 1), base_color=triadic_2, hovering_color=triadic_3)
+                            text_input="EDIT", font=get_font(75, 1), base_color=triadic_2, hovering_color=triadic_3)
 
         #ลบ
         OPTIONS_DELETE = Button(image=None, pos=(screen_width//2, 800),
-                              text_input="DELETE", font=get_font(75, 1), base_color=triadic_2, hovering_color=(255,0,0))
+                            text_input="DELETE", font=get_font(75, 1), base_color=triadic_2, hovering_color=(255,0,0))
 
         #ย้อน
         OPTIONS_BACK = Button(image=None, pos=(screen_width//2, 940),
-                              text_input="BACK", font=get_font(75, 1), base_color=triadic_2, hovering_color=triadic_3)
+                            text_input="BACK", font=get_font(75, 1), base_color=triadic_2, hovering_color=triadic_3)
 
         for button in [OPTIONS_BACK, OPTIONS_DELETE, OPTIONS_EDIT]:
             button.changeColor(OPTIONS_MOUSE_POS)
@@ -486,7 +490,9 @@ def choose_card_style():
 
     while True:
         MOUSE_POS = pygame.mouse.get_pos()
-        screen_color()
+        # screen_color()
+        preparedeck_bg = pygame.image.load("Image/Background/prepare_deck.jpg")
+        SCREEN.blit(preparedeck_bg, (0, 0))
 
         title_text = get_font(65, 1).render("Choose Your Card Style", True, triadic_3)
         title_rect = title_text.get_rect(center=(screen_width // 2, 100))
@@ -501,6 +507,7 @@ def choose_card_style():
         grid_height = total_rows * spacing_y
         start_x = (screen_width - (max_per_row * spacing_x - (spacing_x - box_w))) // 2
         start_y = 250 + scroll_offset
+
 
         card_buttons = []
         for i, (name, path, icon) in enumerate(loaded_styles):
