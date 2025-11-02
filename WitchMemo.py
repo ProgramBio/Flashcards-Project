@@ -835,7 +835,9 @@ def options():
     background_music("Music/005. Ruins.mp3", background_music_volume, -1)
     while True:
         OPTIONS_MOUSE_POS = pygame.mouse.get_pos()
-        screen_color()
+        # screen_color()
+        sw_bg = pygame.image.load("Image/Background/setting-witch.png")
+        SCREEN.blit(sw_bg, (0, 0))
         
         # ปุ่มเพิ่ม/ลดเสียง
         OPTIONS_TEXT = get_font(45, 1).render("Background Music Volume", True, triadic_2)
@@ -843,9 +845,9 @@ def options():
         SCREEN.blit(OPTIONS_TEXT, OPTIONS_RECT)
 
         PLUS_BUTTON = Button(image=None, pos=(screen_width//2 + 150, 250),
-                             text_input="+", font=get_font(75, 1), base_color=(200,180,255), hovering_color=(255,255,255))
+                            text_input="+", font=get_font(75, 1), base_color=(200,180,255), hovering_color=(255,255,255))
         MINUS_BUTTON = Button(image=None, pos=(screen_width//2 - 150, 250),
-                             text_input="-", font=get_font(75, 1), base_color=(200,180,255), hovering_color=(255,255,255))
+                            text_input="-", font=get_font(75, 1), base_color=(200,180,255), hovering_color=(255,255,255))
         
         VOL_TEXT = get_font(55, 1).render(str(int(round(background_music_volume * 100, 2))) + " %", True, triadic_2)
         VOL_RECT = VOL_TEXT.get_rect(center=(screen_width//2, 250))
@@ -857,7 +859,7 @@ def options():
         SCREEN.blit(OPTIONS_FAST, OPTIONS_FAST_RECT)
 
         OPTIONS_FAST = Button(image=None, pos=(screen_width//2, 325),
-                              text_input = f"Hint : {ishint}", font=get_font(45, 1), base_color=triadic_2, hovering_color=triadic_3)
+                            text_input = f"Hint : {ishint}", font=get_font(45, 1), base_color=triadic_2, hovering_color=triadic_3)
         
         # ปุ่มเพิ่ม/ลดเวลาตอบ
         OPTIONS_TEXT_ANSWER_TIME = get_font(45, 1).render("Answer Time", True, triadic_2)
@@ -865,9 +867,9 @@ def options():
         SCREEN.blit(OPTIONS_TEXT_ANSWER_TIME, OPTIONS_RECT_ANSWER_TIME)
 
         PLUS_BUTTON_ANSWER_TIME = Button(image=None, pos=(screen_width//2 + 150, 450),
-                             text_input="+", font=get_font(75, 1), base_color=(200,180,255), hovering_color=(255,255,255))
+                            text_input="+", font=get_font(75, 1), base_color=(200,180,255), hovering_color=(255,255,255))
         MINUS_BUTTON_ANSWER_TIME = Button(image=None, pos=(screen_width//2 - 150, 450),
-                             text_input="-", font=get_font(75, 1), base_color=(200,180,255), hovering_color=(255,255,255))
+                            text_input="-", font=get_font(75, 1), base_color=(200,180,255), hovering_color=(255,255,255))
         
         VOL_TEXT_ANSWER_TIME = get_font(55, 1).render(str(int(round(answer_time, 2))) + " Second", True, triadic_2)
         VOL_RECT_ANSWER_TIME = VOL_TEXT_ANSWER_TIME.get_rect(center=(screen_width//2, 450))
@@ -875,7 +877,7 @@ def options():
         
         #ย้อน
         OPTIONS_BACK = Button(image=None, pos=(screen_width//2, 940),
-                              text_input="BACK", font=get_font(75, 1), base_color=triadic_2, hovering_color=triadic_3)
+                            text_input="BACK", font=get_font(75, 1), base_color=triadic_2, hovering_color=triadic_3)
 
         for button in [PLUS_BUTTON, MINUS_BUTTON, OPTIONS_BACK, OPTIONS_FAST, PLUS_BUTTON_ANSWER_TIME, MINUS_BUTTON_ANSWER_TIME]:
             button.changeColor(OPTIONS_MOUSE_POS)
