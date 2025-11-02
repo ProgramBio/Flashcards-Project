@@ -208,7 +208,9 @@ def select_mode():
         sfx_func("SFX/thatsawonderfulidea.mp3")
     while True:
         PLAY_MOUSE_POS = pygame.mouse.get_pos()
-        screen_color()
+        # screen_color()
+        bg = pygame.image.load("Image/Background/selectmode_bg.png")
+        SCREEN.blit(bg, (0, 0))
         PLAY_TEXT = get_font(45, 1).render(user_name + ", please select mode to play.", True, triadic_2)
         PLAY_RECT = PLAY_TEXT.get_rect(center = (screen_width//2, 150))
         SCREEN.blit(PLAY_TEXT, PLAY_RECT)
