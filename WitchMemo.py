@@ -1,6 +1,7 @@
 """Witch Memo Game Script"""
-import pygame, sys, random, socket, getpass, json, os
+import pygame, sys, random, socket, getpass, json, os, time
 from button import Button
+from math import floor # เพิ่ม math.floor สำหรับการคำนวณเวลาบอส
 
 pygame.init()
 pygame.mixer.init()
@@ -11,7 +12,7 @@ pygame.display.set_caption("Witch's Memo")
 
 background_music_volume = 0.5
 ishint = False
-answer_time = 5
+answer_time = 10 # <<<<<<<<<<<<<<<< ตั้งค่าเริ่มต้นเป็น 10 วินาที (ตามโจทย์)
 
 computer_name = socket.gethostname()
 user_name = getpass.getuser()
@@ -62,7 +63,10 @@ def get_font(size, which_font):
             return pygame.font.Font("Font/SansThai.ttf", size)
 
 def sfx_func(sfx):
-    pygame.mixer.Sound(sfx).play()
+    try:
+        pygame.mixer.Sound(sfx).play()
+    except Exception as e:
+        print(f"SFX Error: {e}")
 
 def screen_color():
     if intro_time > 3:
@@ -100,7 +104,7 @@ def hint(hint_number):
         "Logic Error. . .", "01101100 01100101 01100001 01110110 01100101",
         "? ? ?", "Won't you remember me?",
         "Don't you want me anymore?", "Really?",
-        "Will you remember me?", "No no no no no no no no no no no no no no no no no no no no no no no no no no no no no no no no no no",
+        "Will you remember me?", "No no no no no no no no no no no no no no no no no no no no no no no no no no no no no no no no no no no",
         user_name + "why?", user_name + " " + computer_name + " " + user_name + " " + computer_name + " " + user_name + " " + computer_name,
         "Ahhhhhhhhhhhhhhhhhhhhhhhh!", "01110100 01101111"
         ]
@@ -197,6 +201,730 @@ def transition_to(next_function, next_music_path):
         pygame.time.wait(1000)
     next_function()
 
+# =================================================================
+# ===== [ 1. เพิ่ม HELPER FUNCTIONS และ CLASS ใหม่ ] =====
+# =================================================================
+
+# --- [ เพิ่ม CACHE สำหรับมอนสเตอร์ ] ---
+MONSTER_SPRITE_CACHE = []
+
+def load_monster_sprite_cache():
+    """
+    สแกนโฟลเดอร์ Image/Monster/Gigi และโหลดรูปทั้งหมดเก็บไว้ใน Cache
+    """
+    global MONSTER_SPRITE_CACHE
+    path = "Image/Monster/Gigi"
+    if not os.path.exists(path):
+        print(f"!!! Monster Error: ไม่พบโฟลเดอร์ '{path}'")
+        return
+
+    for f in os.listdir(path):
+        if f.lower().endswith((".png", ".jpg", ".jpeg")):
+            full_path = os.path.join(path, f)
+            # โหลดเก็บไว้เลย (ไม่ต้องปรับขนาดตอนนี้)
+            img = load_image_asset(full_path) 
+            if img:
+                MONSTER_SPRITE_CACHE.append(img)
+    
+    if not MONSTER_SPRITE_CACHE:
+        print(f"!!! Monster Error: ไม่พบไฟล์รูปภาพใน '{path}'")
+        # สร้าง Sprite สำรอง
+        fallback = pygame.Surface((100, 100))
+        fallback.fill((100, 0, 100))
+        MONSTER_SPRITE_CACHE.append(fallback)
+
+def load_image_asset(path, size=None):
+    """
+    ฟังก์ชันช่วยโหลดรูปภาพพร้อมปรับขนาด และจัดการหากไฟล์ไม่เจอ
+    """
+    try:
+        img = pygame.image.load(path).convert_alpha()
+        if size:
+            img = pygame.transform.scale(img, size)
+        return img
+    except Exception as e:
+        print(f"!!! Asset Error: ไม่สามารถโหลดไฟล์ '{path}'. {e}")
+        # สร้าง Surface สีแดงแทนถ้าโหลดไม่ได้
+        fallback = pygame.Surface(size if size else (50, 50))
+        fallback.fill((255, 0, 0))
+        return fallback
+
+def load_deck_file(deck_name_without_json):
+    """
+    ฟังก์ชันสำหรับโหลดข้อมูล deck จากไฟล์ .json
+    (ปรับปรุงจากโค้ดเดิมใน free_for_all)
+    """
+    path = os.path.join(DECK_DIR, deck_name_without_json + ".json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        # ตรวจสอบโครงสร้างไฟล์
+        if "style" not in data:
+            data["style"] = "Image/cards/card.png"
+        if "cards" not in data or not isinstance(data["cards"], list):
+            data["cards"] = []
+            
+        # กรองการ์ดที่ไม่มีคำศัพท์หรือความหมาย
+        valid_cards = [c for c in data["cards"] if c.get("word") and c.get("meaning")]
+        data["cards"] = valid_cards
+            
+        return data
+    except Exception as e:
+        print(f"Load deck error: {e}")
+        return {"style": "Image/cards/card.png", "cards": []}
+
+class DraggableCard:
+    """
+    คลาสสำหรับการ์ดที่ผู้เล่นสามารถลากเพื่อตอบได้ (ใช้ระบบ Polling)
+    """
+    def __init__(self, rect, word, meaning, style_img):
+        self.base_rect = pygame.Rect(rect) # ตำแหน่งเดิม
+        self.rect = pygame.Rect(rect)      # ตำแหน่งปัจจุบัน
+        self.word = word
+        self.meaning = meaning
+        self.card_img = style_img # ภาพพื้นหลังการ์ด (โหลดมาจาก style)
+        
+        self.is_dragging = False
+        self.show_answer = False
+        self.snap_back = False # สถานะที่บอกว่าต้องเด้งกลับ
+        self.font_q = get_font(40, 2)
+        self.font_a = get_font(32, 2)
+
+    def handle_event(self, event):
+        """
+        จัดการเฉพาะการกด (Down) และปล่อย (Up) เมาส์
+        """
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.rect.collidepoint(event.pos) and not self.show_answer:
+                self.is_dragging = True
+                self.snap_back = False
+                return "DRAGGING"
+        
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            if self.is_dragging:
+                self.is_dragging = False
+                # ตรวจสอบโซนที่ปล่อย
+                if self.rect.centerx > screen_width - 400: # โซนขวา (Know)
+                    return "ANSWER_KNOW"
+                elif self.rect.centerx < 400: # โซนซ้าย (Don't Know)
+                    return "ANSWER_DONT_KNOW"
+                else:
+                    self.snap_back = True # ปล่อยกลางจอ
+                    return "NO_ANSWER"
+        return None
+
+    def update_pos(self, mouse_pos):
+        """
+        อัปเดตตำแหน่งการ์ดตามเมาส์ (ถ้ากำลังลาก)
+        """
+        if self.is_dragging:
+            self.rect.center = mouse_pos
+
+    def draw(self, surface):
+        """
+        วาดการ์ดและข้อความ
+        """
+        # ถ้าต้องเด้งกลับ ให้ค่อยๆ เคลื่อนกลับไปที่ base_rect
+        if self.snap_back and not self.is_dragging:
+            self.rect.x += (self.base_rect.x - self.rect.x) * 0.2
+            self.rect.y += (self.base_rect.y - self.rect.y) * 0.2
+            if abs(self.base_rect.x - self.rect.x) < 1:
+                self.rect = pygame.Rect(self.base_rect) # Snap
+                self.snap_back = False
+
+        # วาดการ์ด
+        surface.blit(self.card_img, self.rect)
+        
+        # วาดคำถาม (Word)
+        word_surf = self.font_q.render(self.word, True, (0,0,0))
+        word_rect = word_surf.get_rect(center=self.rect.center)
+        surface.blit(word_surf, word_rect)
+
+        # ถ้าระหว่างเฉลย
+        if self.show_answer:
+            # วาดคำตอบ (Meaning)
+            ans_surf = self.font_a.render(self.meaning, True, (20, 120, 50))
+            ans_rect = ans_surf.get_rect(center=(self.rect.centerx, self.rect.centery + 60))
+            surface.blit(ans_surf, ans_rect)
+
+    def reveal(self):
+        """
+        สั่งให้การ์ดแสดงเฉลยและเด้งกลับตรงกลาง
+        """
+        self.show_answer = True
+        self.snap_back = True
+
+# =================================================================
+# ===== [ 2. ระบบต่อสู้ใหม่ (BATTLE SYSTEM) ] =====
+# =================================================================
+
+def battle_screen(deck_name, count_cards, is_boss_stage):
+    """
+    หน้าจอต่อสู้หลัก (ระบบใหม่ทั้งหมด)
+    """
+    global answer_time # ดึงค่าเวลามาจาก options
+    
+    # --- 1. Setup ---
+    data = load_deck_file(deck_name)
+    style_img_path = data.get("style", "Image/cards/card.png")
+    cards = data.get("cards", [])
+    
+    # --- [เพิ่ม] โหลด Assets (รวม Witch และ Monsters) ---
+    try:
+        card_style_img = load_image_asset(style_img_path, (335, 458))
+        heart_full = load_image_asset("Image/Icon (buff, health-bar)/heart/heart(Full-HP).png", (48, 48))
+        heart_dmg = load_image_asset("Image/Icon (buff, health-bar)/heart/heart(damaged).png", (48, 48))
+        heart_shield_overlay = load_image_asset("Image/Icon (buff, health-bar)/heart/heart - (Sheild).PNG", (48, 48))
+        
+        skill_heal_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Heal.png", (64, 64))
+        skill_shield_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Sheild.png", (64, 64))
+        skill_stop_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Freeze.png", (64, 64))
+        skill_ginger_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Gingerbread (eat 2 gain more hearts).PNG", (64, 64))
+        
+        # โหลดตัวละคร Witch
+        witch_img = load_image_asset("Image/MC Witch.png", (400, 400))
+        witch_img = pygame.transform.flip(witch_img, True, False)
+        
+    except Exception as e:
+        print(f"เกิดข้อผิดพลาดในการโหลด Asset: {e}")
+        return "DEFEAT" # ออกจากการต่อสู้ถ้า asset หลักโหลดไม่ได้
+
+    # ตั้งค่า Timer
+    if is_boss_stage:
+        per_card_time = floor(answer_time / 2) # เวลาบอส = ครึ่งหนึ่ง
+    else:
+        per_card_time = answer_time # เวลาปกติ
+    per_card_time = max(1, per_card_time) # กันหาร 2 แล้วเป็น 0
+
+    # สุ่มการ์ด
+    if len(cards) < count_cards:
+        print("Deck มีการ์ดไม่พอ!")
+        return "DEFEAT"
+    
+    selected = random.sample(cards, count_cards)
+    queue = selected[:]
+    wrong_cards = []
+    random.shuffle(queue)
+
+    # --- 2. Player & Monster Stats ---
+    max_hp = 3
+    hp = max_hp
+    streak = 0
+    skill_points = 0
+    shield_active = False
+    
+    # --- [เพิ่ม] ตัวแปรล็อกการใช้สกิล ---
+    skill_used_this_turn = False 
+    
+    gingerbread_eaten = 0 # 0 = ยังไม่กิน, 1 = กินไป 1 ชิ้น
+    
+    # ตั้งค่า Monster
+    if is_boss_stage:
+        monsters_count = 1
+        monster_hp = [max(1, floor(count_cards * 0.5))] 
+        monster_names = ["BOSS"]
+    else:
+        if count_cards <= 5: monsters_count = 1
+        elif count_cards <= 10: monsters_count = 2
+        else: monsters_count = 3
+        monster_hp = [5] * monsters_count
+        monster_names = [f"Monster {i+1}" for i in range(monsters_count)]
+
+    # --- [เพิ่ม] สุ่ม Sprite มอนสเตอร์ ---
+    assigned_monster_sprites = []
+    if MONSTER_SPRITE_CACHE:
+        for _ in range(monsters_count):
+            assigned_monster_sprites.append(random.choice(MONSTER_SPRITE_CACHE))
+
+
+    # --- 3. Game State & UI ---
+    game_state = "NEW_CARD" # สถานะ: NEW_CARD, WAITING, REVEALING
+    current_card_obj = None
+    current_card_dict = None
+    card_start_time = 0
+    reveal_until = 0 
+    time_stopped_for_card = False
+    stop_time_next_card = False 
+
+    game_log = []
+    def log(msg, color=(255, 255, 255)):
+        game_log.append((msg, color))
+        if len(game_log) > 5:
+            game_log.pop(0)
+
+    log(f"Battle Start! Stage: {count_cards} cards.", (255, 255, 0))
+
+    # สร้างปุ่มสกิล
+    skill_y = screen_height - 200
+    skill_heal_btn = Button(image=skill_heal_img, pos=(screen_width - 320, skill_y), text_input="", font=get_font(1,1), base_color="White", hovering_color="Green")
+    skill_shield_btn = Button(image=skill_shield_img, pos=(screen_width - 240, skill_y), text_input="", font=get_font(1,1), base_color="White", hovering_color="Green")
+    skill_stop_btn = Button(image=skill_stop_img, pos=(screen_width - 160, skill_y), text_input="", font=get_font(1,1), base_color="White", hovering_color="Green")
+    skill_maxhp_btn = Button(image=skill_ginger_img, pos=(screen_width - 80, skill_y), text_input="", font=get_font(1,1), base_color="White", hovering_color="Green")
+    
+    skill_buttons = [skill_heal_btn, skill_shield_btn, skill_stop_btn, skill_maxhp_btn]
+    skill_costs = {
+        skill_heal_btn: 1,
+        skill_shield_btn: 2,
+        skill_stop_btn: 2,
+        skill_maxhp_btn: 1 # ใช้ 1 แต้ม (ต้องกด 2 ครั้ง)
+    }
+
+    # --- 4. Game Loop (Battle) ---
+    running = True
+    result = "DEFEAT" 
+    
+    def handle_answer(answer_type):
+        nonlocal game_state, reveal_until, current_card_obj, current_card_dict
+        nonlocal streak, skill_points, shield_active, hp, running, result
+        
+        game_state = "REVEALING"
+        reveal_until = pygame.time.get_ticks() + 1500 # เฉลย 1.5 วินาที
+        current_card_obj.reveal() 
+        sfx_func("SFX/Click.mp3")
+
+        if answer_type == "ANSWER_KNOW":
+            log("Correct!", (0, 255, 0))
+            streak += 1
+            if streak % 3 == 0 and streak > 0:
+                skill_points += 1
+                log("Skill Point +1!", (255, 255, 0))
+            
+            for i in range(len(monster_hp)):
+                if monster_hp[i] > 0:
+                    monster_hp[i] -= 1
+                    log(f"Hit {monster_names[i]}! (HP: {monster_hp[i]})")
+                    if monster_hp[i] <= 0:
+                        log(f"{monster_names[i]} defeated!", (0, 255, 0))
+                        sfx_func("SFX/boom.mp3")
+                    break
+        
+        else: # "ANSWER_DONT_KNOW" หรือ "TIMEOUT"
+            log("Wrong / Don't Know", (255, 100, 100))
+            streak = 0
+            wrong_cards.append(current_card_dict) 
+            
+            if shield_active:
+                shield_active = False
+                log("Shield blocked 1 damage!", (0, 200, 255))
+            else:
+                hp -= 1
+                log("Lost 1 Heart!", (255, 0, 0))
+                sfx_func("SFX/wrong.mp3")
+
+        if hp <= 0:
+            log("HP reached 0... You are defeated.", (255, 0, 0))
+            result = "DEFEAT"
+            running = False
+            
+        if all(mhp <= 0 for mhp in monster_hp):
+            log("All monsters defeated! VICTORY!", (0, 255, 0))
+            result = "VICTORY"
+            running = False
+
+    clock = pygame.time.Clock()
+    while running:
+        clock.tick(60)
+        MOUSE_POS = pygame.mouse.get_pos()
+        
+        # --- 5. Logic: Update (Polling) ---
+        if game_state == "WAITING" and current_card_obj:
+            current_card_obj.update_pos(MOUSE_POS)
+        for btn in skill_buttons:
+            btn.changeColor(MOUSE_POS)
+            
+        # --- 6. Event Handling ---
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+            
+            # 6.1 จัดการการลากการ์ด
+            if game_state == "WAITING" and current_card_obj:
+                card_event = current_card_obj.handle_event(event) # เช็ค Down/Up
+                if card_event == "ANSWER_KNOW":
+                    handle_answer("ANSWER_KNOW")
+                elif card_event == "ANSWER_DONT_KNOW":
+                    handle_answer("ANSWER_DONT_KNOW")
+
+            # --- [แก้ไข] 6.2 จัดการการกดสกิล (ย้ายมา WAITING และเช็ค lock) ---
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                # สกิลจะถูกล็อกถ้าไม่ใช่ตา WAITING หรือใช้ไปแล้ว
+                if game_state == "WAITING" and not skill_used_this_turn: 
+                    if skill_heal_btn.checkForInput(MOUSE_POS):
+                        if skill_points >= skill_costs[skill_heal_btn]:
+                            skill_points -= skill_costs[skill_heal_btn]
+                            hp = min(max_hp, hp + 1)
+                            log("Heal! +1 Heart.", (0, 255, 0))
+                            sfx_func("SFX/Click.mp3")
+                            skill_used_this_turn = True # ล็อก
+                        else:
+                            log("Not enough SP!", (255, 100, 100))
+                            
+                    elif skill_shield_btn.checkForInput(MOUSE_POS):
+                        if skill_points >= skill_costs[skill_shield_btn]:
+                            skill_points -= skill_costs[skill_shield_btn]
+                            shield_active = True
+                            log("Shield Activated!", (0, 200, 255))
+                            sfx_func("SFX/Click.mp3")
+                            skill_used_this_turn = True # ล็อก
+                        else:
+                            log("Not enough SP!", (255, 100, 100))
+
+                    elif skill_stop_btn.checkForInput(MOUSE_POS):
+                        if skill_points >= skill_costs[skill_stop_btn]:
+                            skill_points -= skill_costs[skill_stop_btn]
+                            # stop_time_next_card = True # เปลี่ยนเป็นหยุดทันที
+                            time_stopped_for_card = True # หยุดเวลานี้เลย
+                            log("Time Stop Activated!", (0, 200, 255))
+                            sfx_func("SFX/Click.mp3")
+                            skill_used_this_turn = True # ล็อก
+                        else:
+                            log("Not enough SP!", (255, 100, 100))
+
+                    elif skill_maxhp_btn.checkForInput(MOUSE_POS):
+                        if gingerbread_eaten == 0:
+                            gingerbread_eaten = 1
+                            log("Ate 1/2 Gingerbread...", (200, 200, 200))
+                            sfx_func("SFX/Click.mp3")
+                            skill_used_this_turn = True # ล็อก (แม้จะแค่ 1/2)
+                        elif gingerbread_eaten == 1:
+                            if skill_points >= skill_costs[skill_maxhp_btn]:
+                                skill_points -= skill_costs[skill_maxhp_btn]
+                                gingerbread_eaten = 0 # รีเซ็ต
+                                max_hp += 1
+                                hp += 1 # เพิ่มเลือดปัจจุบันด้วย
+                                log("Max HP Increased!", (255, 255, 0))
+                                sfx_func("SFX/Click.mp3")
+                                skill_used_this_turn = True # ล็อก
+                            else:
+                                log("Not enough SP for 2/2!", (255, 100, 100))
+
+        # --- 7. Game State Logic ---
+        
+        # 7.1 หมดเวลา
+        if game_state == "WAITING" and not time_stopped_for_card:
+            elapsed = (pygame.time.get_ticks() - card_start_time) / 1000.0
+            if elapsed > per_card_time:
+                log("Time Out!", (255, 100, 100))
+                handle_answer("TIMEOUT")
+        
+        # 7.2 หมดเวลาเฉลย -> ไปการ์ดใหม่
+        if game_state == "REVEALING":
+            if pygame.time.get_ticks() > reveal_until:
+                if not running:
+                    pygame.time.wait(500) 
+                    return result
+                game_state = "NEW_CARD"
+                
+        # 7.3 สร้างการ์ดใหม่
+        if game_state == "NEW_CARD":
+            
+            # --- [เพิ่ม] รีเซ็ตตัวล็อกสกิล ---
+            skill_used_this_turn = False
+            
+            if not queue: 
+                if not wrong_cards: 
+                    if all(mhp <= 0 for mhp in monster_hp):
+                         result = "VICTORY"
+                    else:
+                         log("Cards finished, but monsters remain...", (255, 100, 100))
+                         result = "DEFEAT"
+                    running = False 
+                    continue 
+                else:
+                    log("Reshuffling wrong cards...", (200, 200, 255))
+                    queue = wrong_cards[:]
+                    wrong_cards.clear()
+                    random.shuffle(queue)
+
+            if queue:
+                current_card_dict = queue.pop(0)
+                card_w, card_h = 335, 458
+                card_rect_x = (screen_width // 2) - (card_w // 2)
+                card_rect_y = (screen_height // 2) - (card_h // 2) - 50 # (ขยับขึ้นเล็กน้อย)
+                card_rect = (card_rect_x, card_rect_y, card_w, card_h)
+                current_card_obj = DraggableCard(card_rect, 
+                                                current_card_dict.get("word", "??"), 
+                                                current_card_dict.get("meaning", "??"), 
+                                                card_style_img)
+                game_state = "WAITING"
+                card_start_time = pygame.time.get_ticks()
+                
+                # [แก้ไข] สกิลหยุดเวลาทำงานทันที ไม่ต้องรอการ์ดหน้า
+                # if stop_time_next_card:
+                #     time_stopped_for_card = True
+                #     stop_time_next_card = False
+                # else:
+                time_stopped_for_card = False # รีเซ็ตทุกครั้ง
+
+        # --- 8. Drawing ---
+        SCREEN.fill(basecolor)
+        
+        # วาดโซนลาก
+        s_left = pygame.Surface((400, screen_height), pygame.SRCALPHA)
+        s_left.fill((255, 100, 100, 50))
+        s_right = pygame.Surface((400, screen_height), pygame.SRCALPHA)
+        s_right.fill((100, 255, 100, 50))
+        SCREEN.blit(s_left, (0, 0))
+        SCREEN.blit(s_right, (screen_width - 400, 0))
+        
+        title_font = get_font(40, 1).render("Don't Know", True, "white")
+        SCREEN.blit(title_font, (screen_width//2 - 550, screen_height // 2))
+        title_font = get_font(40, 1).render("Know", True, "white")
+        SCREEN.blit(title_font, (screen_width//2 + 550, screen_height // 2))
+        
+        # วาด HP
+        hp_x_start = 20
+        for i in range(max_hp):
+            if i == (hp - 1) and shield_active:
+                SCREEN.blit(heart_shield_overlay, (hp_x_start + i * 52, 20))
+            elif i < hp:
+                SCREEN.blit(heart_full, (hp_x_start + i * 52, 20))
+            else:
+                SCREEN.blit(heart_dmg, (hp_x_start + i * 52, 20))
+        
+        # --- [ ⬇️ เพิ่มเข้ามาใหม่ ] ---
+        # (แสดง HP และ Streak เป็นข้อความ)
+        hp_text = f"HP: {hp} / {max_hp}"
+        hp_text_surf = get_font(25, 1).render(hp_text, True, "white")
+        hp_text_rect = hp_text_surf.get_rect(left=hp_x_start, top=hp_x_start + 55) # (y=75)
+        SCREEN.blit(hp_text_surf, hp_text_rect)
+
+        streak_text = f"Streak: {streak}"
+        streak_text_surf = get_font(25, 1).render(streak_text, True, "white")
+        streak_text_rect = streak_text_surf.get_rect(left=hp_x_start, top=hp_x_start + 85) # (y=105)
+        SCREEN.blit(streak_text_surf, streak_text_rect)
+        # --- [ จบส่วนที่เพิ่ม ] ---
+
+        
+        # --- [แก้ไข] วาดมอนสเตอร์ (พร้อม Sprite) ---
+        monster_x_start = screen_width - 440   # (ขยับซ้าย)
+        monster_bar_width = 400                # (ขยาย)
+        for i in range(monsters_count):
+            m_name = monster_names[i]
+            m_hp = monster_hp[i]
+            color = (200, 60, 60) if m_hp > 0 else (80, 80, 80)
+            bar_y = 20 + i * 80 # เพิ่มความสูงของแถบ
+            bar_rect = pygame.Rect(monster_x_start, bar_y, monster_bar_width, 70)
+            pygame.draw.rect(SCREEN, color, bar_rect, border_radius=8)
+            
+            # วาด Sprite (ถ้ามี)
+            sprite_x_offset = 10
+            if i < len(assigned_monster_sprites):
+                sprite_img = assigned_monster_sprites[i]
+                sprite_scaled = pygame.transform.scale(sprite_img, (60, 60))
+                sprite_rect = sprite_scaled.get_rect(centery=bar_rect.centery, left=bar_rect.x + 10)
+                SCREEN.blit(sprite_scaled, sprite_rect)
+                sprite_x_offset = 80 # เว้นที่ให้รูป
+            
+            # วาด Text (ขยับ)
+            text_surf = get_font(25, 2).render(f"{m_name} HP: {m_hp}", True, "white")
+            text_rect = text_surf.get_rect(left=bar_rect.x + sprite_x_offset, centery=bar_rect.centery)
+            SCREEN.blit(text_surf, text_rect)
+
+        # วาดการ์ด
+        if current_card_obj:
+            current_card_obj.draw(SCREEN)
+
+        # วาด Timer
+        if game_state == "WAITING" or (game_state == "REVEALING" and time_stopped_for_card):
+            t_left = per_card_time
+            if not time_stopped_for_card:
+                elapsed = (pygame.time.get_ticks() - card_start_time) / 1000.0
+                t_left = max(0, per_card_time - elapsed)
+            
+            bar_w = 400
+            pct = 1.0 if time_stopped_for_card else (t_left / per_card_time)
+            bar_color = (100, 100, 255) if time_stopped_for_card else (80, 160, 240)
+            
+            pygame.draw.rect(SCREEN, (50,50,50), (screen_width//2 - 200, screen_height - 250, bar_w, 20), border_radius=8)
+            pygame.draw.rect(SCREEN, bar_color, (screen_width//2 - 200, screen_height - 250, int(bar_w * pct), 20), border_radius=8)
+            
+            timer_text = "PAUSED" if time_stopped_for_card else f"{t_left:.1f}s"
+            SCREEN.blit(get_font(25, 1).render(timer_text, True, "white"), (screen_width//2 - 30, screen_height - 280))
+
+        # --- [เพิ่ม] วาด Witch Sprite ---
+        if witch_img:
+            # วาดให้อยู่เหนือ Game Log
+            witch_rect = witch_img.get_rect(bottomleft=(40, screen_height - 40)) # (ขยับลง)
+            SCREEN.blit(witch_img, witch_rect)
+
+
+        # --- วาด UI สกิล (ล่างขวา) ---
+        font_skill_cost = get_font(20, 1)
+        font_skill_points = get_font(35, 1)
+        
+        SCREEN.blit(font_skill_points.render(f"Skill Points: {skill_points}", True, triadic_3), (screen_width - 330, skill_y + 40))
+        SCREEN.blit(get_font(25, 1).render(f"Streak: {streak}", True, "white"), (screen_width - 330, skill_y + 80))
+
+        # --- [แก้ไข] อัปเดตเงื่อนไข is_locked ---
+        is_locked = (game_state != "WAITING") or skill_used_this_turn
+        
+        for btn in skill_buttons:
+            cost = skill_costs[btn]
+            btn.update(SCREEN)
+            
+            cost_text = f"({cost} SP)"
+            if btn == skill_maxhp_btn:
+                cost_text = f"({cost} SP) [{gingerbread_eaten}/2]"
+                
+            SCREEN.blit(font_skill_cost.render(cost_text, True, "white"), (btn.rect.centerx - 25, btn.rect.bottom + 5))
+            
+            if is_locked:
+                lock_surf = pygame.Surface((64, 64), pygame.SRCALPHA)
+                lock_surf.fill((0, 0, 0, 180))
+                SCREEN.blit(lock_surf, btn.rect.topleft)
+            elif skill_points < cost and (btn != skill_maxhp_btn or gingerbread_eaten == 0):
+                lock_surf = pygame.Surface((64, 64), pygame.SRCALPHA)
+                lock_surf.fill((200, 0, 0, 100))
+                SCREEN.blit(lock_surf, btn.rect.topleft)
+
+        # วาด Game Log (ล่างซ้าย)
+        log_y_start = 650 # (ย้ายขึ้นมา)
+        for i, (msg, color) in enumerate(game_log):
+            # ขยับ Log ไปทางขวาเพื่อหลบแม่มด
+            SCREEN.blit(get_font(22, 2).render(msg, True, color), (450, log_y_start + i * 25)) # (ขยับขวา)
+
+        pygame.display.flip()
+
+    # --- 9. Battle End ---
+    return result
+
+def show_battle_result(result, deck_name):
+    """
+    หน้าจอสรุปผลแพ้/ชนะ
+    """
+    sfx_func("SFX/boom.mp3" if result == "DEFEAT" else "SFX/mus_wawa.mp3")
+    
+    while True:
+        MOUSE_POS = pygame.mouse.get_pos()
+        SCREEN.fill(basecolor if result == "VICTORY" else (50, 0, 0))
+        
+        result_text_surf = get_font(100, 1).render(result, True, triadic_3 if result == "VICTORY" else (255, 50, 50))
+        SCREEN.blit(result_text_surf, result_text_surf.get_rect(center=(screen_width//2, screen_height//2 - 100)))
+
+        BACK_BUTTON = Button(None, (screen_width//2, screen_height//2 + 100), "BACK", get_font(75, 1), triadic_2, triadic_3)
+        BACK_BUTTON.changeColor(MOUSE_POS)
+        BACK_BUTTON.update(SCREEN)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if BACK_BUTTON.checkForInput(MOUSE_POS):
+                    sfx_func("SFX/Click.mp3")
+                    # กลับไปหน้า deck_choice_menu
+                    transition_to(lambda: deck_choice_menu(deck_name), "Music/017. Snowy.mp3")
+                    return
+        
+        pygame.display.update()
+
+def choose_stage_and_start(deck_name):
+    """
+    หน้าจอเลือกด่าน (5, 10, 15, 20, Boss)
+    นี่คือฟังก์ชันใหม่ที่มาแทน play_deck เดิม
+    """
+    data = load_deck_file(deck_name)
+    n_cards = len(data.get("cards", []))
+    
+    available_stages = []
+    if n_cards >= 5: available_stages.append(5)
+    if n_cards >= 10: available_stages.append(10)
+    if n_cards >= 15: available_stages.append(15)
+    if n_cards >= 20: available_stages.append(20)
+    if n_cards > 20: available_stages.append(n_cards) # Boss Stage
+    
+    if not available_stages:
+        # ไม่สามารถเริ่มได้ (การ์ดน้อยกว่า 5)
+        while True:
+            MOUSE_POS = pygame.mouse.get_pos()
+            SCREEN.fill(basecolor)
+            err_text = get_font(40, 2).render(f"Deck '{deck_name}' needs at least 5 cards to play.", True, (255, 100, 100))
+            SCREEN.blit(err_text, err_text.get_rect(center=(screen_width//2, screen_height//2 - 50)))
+            
+            BACK_BUTTON = Button(None, (screen_width//2, screen_height//2 + 100), "BACK", get_font(75, 1), triadic_2, triadic_3)
+            BACK_BUTTON.changeColor(MOUSE_POS)
+            BACK_BUTTON.update(SCREEN)
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit(); sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if BACK_BUTTON.checkForInput(MOUSE_POS):
+                        sfx_func("SFX/Click.mp3")
+                        transition_to(lambda: deck_choice_menu(deck_name), "Music/017. Snowy.mp3")
+                        return
+            pygame.display.update()
+    
+    # มีด่านให้เลือก
+    stage_buttons = []
+    total_btns = len(available_stages)
+    btn_width = 200
+    btn_spacing = 50
+    total_width = (total_btns * btn_width) + ((total_btns - 1) * btn_spacing)
+    start_x = (screen_width - total_width) // 2
+    
+    for i, stage_count in enumerate(available_stages):
+        is_boss = (stage_count > 20)
+        text = f"BOSS ({stage_count})" if is_boss else f"{stage_count} Cards"
+        font_size = 40 if is_boss else 50
+        
+        btn = Button(None, (start_x + i * (btn_width + btn_spacing) + (btn_width//2), screen_height//2), text, get_font(font_size, 1), triadic_2, triadic_3)
+        stage_buttons.append((btn, stage_count, is_boss))
+
+    while True:
+        MOUSE_POS = pygame.mouse.get_pos()
+        SCREEN.fill(basecolor)
+        
+        title_text = get_font(65, 1).render("Choose Your Stage", True, triadic_3)
+        SCREEN.blit(title_text, title_text.get_rect(center=(screen_width//2, 200)))
+
+        for btn, count, is_boss in stage_buttons:
+            btn.changeColor(MOUSE_POS)
+            btn.update(SCREEN)
+            
+        BACK_BUTTON = Button(None, (screen_width//2, screen_height - 150), "BACK", get_font(75, 1), triadic_2, triadic_3)
+        BACK_BUTTON.changeColor(MOUSE_POS)
+        BACK_BUTTON.update(SCREEN)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if BACK_BUTTON.checkForInput(MOUSE_POS):
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(lambda: deck_choice_menu(deck_name), "Music/017. Snowy.mp3")
+                    return
+                
+                for btn, count, is_boss in stage_buttons:
+                    if btn.checkForInput(MOUSE_POS):
+                        sfx_func("SFX/Click.mp3")
+                        # เริ่มเกม
+                        result = battle_screen(deck_name, count, is_boss)
+                        # แสดงผลลัพธ์
+                        show_battle_result(result, deck_name)
+                        return # กลับไปหน้า deck_choice_menu (ผ่าน show_battle_result)
+
+        pygame.display.update()
+
+def play_deck(deck_name):
+    """
+    ฟังก์ชันนี้ถูกเรียกโดย transition_to เมื่อกด "PLAY"
+    เราจะเรียกฟังก์ชันเลือกด่าน (choose_stage_and_start) จากตรงนี้
+    """
+    # หยุดเพลงที่กำลังเล่นจาก transition
+    pygame.mixer.music.fadeout(500) 
+    
+    # เรียกหน้าจอเลือกด่าน
+    choose_stage_and_start(deck_name)
+    
+    # (ฟังก์ชันนี้จะจบลงเมื่อ choose_stage_and_start/battle_screen/show_battle_result
+    # เรียก transition_to กลับไปที่ deck_choice_menu)
+    return
+
+# =================================================================
+# ===== [ 3. โค้ดเดิมของ WitchMemo.py (ไม่เปลี่ยนแปลง) ] =====
+# =================================================================
 
 def select_mode():
     background_music("Music/003. Your Best Friend.mp3", background_music_volume, -1)
@@ -252,10 +980,11 @@ def create_deck(style_path):
     os.makedirs(deck_dir, exist_ok=True)
     user_input = ""
     clock = pygame.time.Clock()
+    error_text = ""
+    error_timer = 0  # เวลาแสดง error 2 วินาที
 
     while True:
         CREATE_MOUSE_POS = pygame.mouse.get_pos()
-        # screen_color()
         editdeck3_bg = pygame.image.load("Image/Background/editing_deck3.png")
         SCREEN.blit(editdeck3_bg, (0, 0))
 
@@ -265,7 +994,7 @@ def create_deck(style_path):
         BOX = pygame.Rect(screen_width//2 - 300, 350, 600, 80)
         pygame.draw.rect(SCREEN, (255,255,255), BOX, border_radius=8)
         pygame.draw.rect(SCREEN, (160,100,220), BOX, 3, border_radius=8)
-        SCREEN.blit(get_font(50, 2).render(user_input, True, (90,0,130)), (BOX.x + 20, BOX.y)) #ถ้าใช้ font pixel ต้องเป็น (BOX.x + 20, BOX.y + 15)
+        SCREEN.blit(get_font(50, 2).render(user_input, True, (90,0,130)), (BOX.x + 20, BOX.y))
 
         BACK_BUTTON = Button(None, (screen_width//2, 800), "BACK", get_font(75, 1), triadic_3, triadic_2)
         CREATE_BUTTON = Button(None, (screen_width//2, 600), "CREATE", get_font(75, 1), (200,180,255), (255,255,255))
@@ -274,9 +1003,18 @@ def create_deck(style_path):
             button.changeColor(CREATE_MOUSE_POS)
             button.update(SCREEN)
 
+        # แสดงข้อความ error (สีแดง)
+        if error_text:
+            err_surface = get_font(40, 1).render(error_text, True, (255, 60, 60))
+            SCREEN.blit(err_surface, err_surface.get_rect(center=(screen_width//2, 500)))
+            error_timer -= clock.get_time()
+            if error_timer <= 0:
+                error_text = ""
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     transition_to(free_for_all, "Music/017. Snowy.mp3")
@@ -284,28 +1022,51 @@ def create_deck(style_path):
                 elif event.key == pygame.K_BACKSPACE:
                     user_input = user_input[:-1]
                 elif event.key == pygame.K_RETURN:
-                    if user_input.strip():
-                        fname = os.path.join(deck_dir, user_input.strip() + ".json")
+                    deck_name = user_input.strip()
+                    fname = os.path.join(deck_dir, deck_name + ".json")
+                    if not deck_name:
+                        sfx_func("SFX/wrong.mp3")
+                        error_text = "Name cannot be empty!"
+                        error_timer = 2000
+                    elif os.path.exists(fname):
+                        sfx_func("SFX/wrong.mp3")
+                        error_text = "Deck name already exists!"
+                        error_timer = 2000
+                    else:
                         with open(fname, "w", encoding="utf-8") as f:
                             json.dump({"style": style_path, "cards": []}, f, ensure_ascii=False, indent=4)
+                        sfx_func("SFX/Click.mp3")
                         transition_to(free_for_all, "Music/017. Snowy.mp3")
                         return
                 else:
                     if len(user_input) < 20:
                         user_input += event.unicode
+
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if BACK_BUTTON.checkForInput(CREATE_MOUSE_POS):
                     transition_to(free_for_all, "Music/017. Snowy.mp3")
                     return
-                if CREATE_BUTTON.checkForInput(CREATE_MOUSE_POS) and user_input.strip():
-                    fname = os.path.join(deck_dir, user_input.strip() + ".json")
-                    with open(fname, "w", encoding="utf-8") as f:
-                        json.dump({"style": style_path, "cards": []}, f, ensure_ascii=False, indent=4)
-                    transition_to(free_for_all, "Music/017. Snowy.mp3")
-                    return
+                if CREATE_BUTTON.checkForInput(CREATE_MOUSE_POS):
+                    deck_name = user_input.strip()
+                    fname = os.path.join(deck_dir, deck_name + ".json")
+                    if not deck_name:
+                        sfx_func("SFX/wrong.mp3")
+                        error_text = "Name cannot be empty!"
+                        error_timer = 2000
+                    elif os.path.exists(fname):
+                        sfx_func("SFX/wrong.mp3")
+                        error_text = "Deck name already exists!"
+                        error_timer = 2000
+                    else:
+                        with open(fname, "w", encoding="utf-8") as f:
+                            json.dump({"style": style_path, "cards": []}, f, ensure_ascii=False, indent=4)
+                        sfx_func("SFX/Click.mp3")
+                        transition_to(free_for_all, "Music/017. Snowy.mp3")
+                        return
 
         pygame.display.update()
         clock.tick(60)
+
 
 
 def free_for_all():
@@ -315,11 +1076,28 @@ def free_for_all():
 
     scroll_offset = 0
     scroll_speed = 60
+    clock = pygame.time.Clock()
+
+    # โหลดพื้นหลังและการ์ดหลักแค่ครั้งเดียว
+    bg = pygame.image.load("Image/Background/selectmode_bg.png").convert()
+    base_card = pygame.image.load("Image/cards/card.png").convert_alpha()
+    base_card = pygame.transform.scale(base_card, (335, 458))
+
+    # โหลดภาพการ์ดแบบ cache
+    loaded_styles = {}
+
+    def get_card_image(style_path):
+        """โหลดภาพการ์ดจาก path ถ้ามีใน cache แล้วใช้เลย"""
+        if style_path not in loaded_styles:
+            if not os.path.exists(style_path):
+                style_path = "Image/cards/card.png"
+            img = pygame.image.load(style_path).convert_alpha()
+            img = pygame.transform.scale(img, (335, 458))
+            loaded_styles[style_path] = img
+        return loaded_styles[style_path]
 
     while True:
         FREEFORALL_MOUSE_POS = pygame.mouse.get_pos()
-        # screen_color()
-        bg = pygame.image.load("Image/Background/selectmode_bg.png")
         SCREEN.blit(bg, (0, 0))
 
         title_text = get_font(65, 1).render("Select Your Deck", True, triadic_3)
@@ -336,6 +1114,7 @@ def free_for_all():
         start_y = 200 + scroll_offset
 
         deck_buttons = []
+
         for i, deck in enumerate(deck_files):
             deck_path = os.path.join(deck_dir, deck)
             try:
@@ -345,11 +1124,7 @@ def free_for_all():
             except:
                 style_path = "Image/cards/card.png"
 
-            if not os.path.exists(style_path):
-                style_path = "Image/cards/card.png"
-
-            card_img = pygame.image.load(style_path).convert_alpha()
-            card_img = pygame.transform.scale(card_img, (box_w, box_h))
+            card_img = get_card_image(style_path)
 
             row = i // max_per_row
             col = i % max_per_row
@@ -361,15 +1136,16 @@ def free_for_all():
             if hovering:
                 hover_overlay = pygame.Surface(card_img.get_size(), pygame.SRCALPHA)
                 hover_overlay.fill((255, 255, 255, 80))
-                card_img.blit(hover_overlay, (0, 0))
-
-            SCREEN.blit(card_img, (box_x, box_y))
+                card_img_hover = card_img.copy()
+                card_img_hover.blit(hover_overlay, (0, 0))
+                SCREEN.blit(card_img_hover, (box_x, box_y))
+            else:
+                SCREEN.blit(card_img, (box_x, box_y))
 
             deck_name = deck.replace(".json", "")
-            name_text = get_font(40, 2).render(deck_name, True, triadic_2)
+            name_text = get_font(30, 2).render(deck_name, True, triadic_2)
             name_rect = name_text.get_rect(center=(box_rect.centerx, box_rect.bottom + 10))
             SCREEN.blit(name_text, name_rect)
-
             deck_buttons.append((box_rect, deck_name))
 
         # ปุ่ม CREATE NEW DECK
@@ -378,8 +1154,6 @@ def free_for_all():
         col = create_index % max_per_row
         create_x = start_x + col * spacing_x
         create_y = start_y + row * spacing_y
-        base_card = pygame.image.load("Image/cards/card.png").convert_alpha()
-        base_card = pygame.transform.scale(base_card, (box_w, box_h))
         SCREEN.blit(base_card, (create_x, create_y))
 
         plus_text = get_font(200, 1).render("+", True, "#BCB277")
@@ -396,12 +1170,12 @@ def free_for_all():
                 pygame.quit(); sys.exit()
             if event.type == pygame.MOUSEWHEEL:
                 scroll_offset += event.y * scroll_speed
-                scroll_offset = max(min(0, scroll_offset), -((total_rows * spacing_y) - screen_height + 300))
+                scroll_offset = max(min(0, scroll_offset), -((total_rows * spacing_y) - screen_height + 350))
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 for rect, name in deck_buttons:
                     if rect.collidepoint(FREEFORALL_MOUSE_POS):
                         sfx_func("SFX/Click.mp3")
-                        transition_to(deck_choice_menu(name), "Music/017. Snowy.mp3")
+                        transition_to(lambda: deck_choice_menu(name), "Music/017. Snowy.mp3")
                         return
                 if pygame.Rect(create_x, create_y, box_w, box_h).collidepoint(FREEFORALL_MOUSE_POS):
                     sfx_func("SFX/Click.mp3")
@@ -413,53 +1187,458 @@ def free_for_all():
                     return
 
         pygame.display.update()
+        clock.tick(60)  # จำกัด FPS ไว้ที่ 60
+
 
 def deck_choice_menu(fname):
     while True:
         OPTIONS_MOUSE_POS = pygame.mouse.get_pos()
-        # screen_color()
         preparedeck_bg = pygame.image.load("Image/Background/prepare_deck.jpg")
         SCREEN.blit(preparedeck_bg, (0, 0))
 
-        #ชื่อ Deck
-        OPTIONS_TEXT = get_font(45, 2).render(f"Deck: {fname}", True, triadic_2)
-        OPTIONS_RECT = OPTIONS_TEXT.get_rect(center=(screen_width//2, 120))
-        SCREEN.blit(OPTIONS_TEXT, OPTIONS_RECT)
+        OPTIONS_TEXT = get_font(85, 2).render(f"Deck: {fname}", True, triadic_2)
+        SCREEN.blit(OPTIONS_TEXT, OPTIONS_TEXT.get_rect(center=(screen_width//2, 130)))
 
-        #
-        OPTIONS_EDIT = Button(image=None, pos=(screen_width//2, 700),
-                            text_input="EDIT", font=get_font(75, 1), base_color=triadic_2, hovering_color=triadic_3)
-
-        #ลบ
-        OPTIONS_DELETE = Button(image=None, pos=(screen_width//2, 800),
-                            text_input="DELETE", font=get_font(75, 1), base_color=triadic_2, hovering_color=(255,0,0))
-
-        #ย้อน
-        OPTIONS_BACK = Button(image=None, pos=(screen_width//2, 940),
-                            text_input="BACK", font=get_font(75, 1), base_color=triadic_2, hovering_color=triadic_3)
-
-        for button in [OPTIONS_BACK, OPTIONS_DELETE, OPTIONS_EDIT]:
-            button.changeColor(OPTIONS_MOUSE_POS)
-            button.update(SCREEN)
+        buttons = [
+            ("PLAY", 300),
+            ("EDIT", 400),
+            ("RENAME", 500),
+            ("CHANGE STYLE", 600),
+            ("DELETE", 700),
+            ("BACK", 940)
+        ]
+        deck_buttons = []
+        for text, y in buttons:
+            btn = Button(None, (screen_width//2, y), text, get_font(75, 1), triadic_2, triadic_3)
+            if text == "DELETE":
+                btn.hovering_color = (255, 0, 0)
+            btn.changeColor(OPTIONS_MOUSE_POS)
+            btn.update(SCREEN)
+            deck_buttons.append((text, btn))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if OPTIONS_BACK.checkForInput(OPTIONS_MOUSE_POS):
-                    sfx_func("SFX/Click.mp3")
-                    transition_to(free_for_all, "Music/017. Snowy.mp3")
-                if OPTIONS_EDIT.checkForInput(OPTIONS_MOUSE_POS):
-                    sfx_func("SFX/Click.mp3")
-                    transition_to(lambda: edit_deck(fname), "Music/017. Snowy.mp3")
-                if OPTIONS_DELETE.checkForInput(OPTIONS_MOUSE_POS):
-                    try:
-                        os.remove(os.path.join(f"decks/{fname}.json"))
-                    except Exception as e:
-                        print("Delete error", e)
-                    sfx_func("SFX/boom.mp3")
-                    transition_to(free_for_all, "Music/017. Snowy.mp3")
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                for text, btn in deck_buttons:
+                    if btn.checkForInput(OPTIONS_MOUSE_POS):
+                        sfx_func("SFX/Click.mp3")
+                        if text == "BACK":
+                            transition_to(free_for_all, "Music/017. Snowy.mp3")
+                            return
+                        elif text == "PLAY":
+                            # <<<<<<<<<<<<<<<< [ นี่คือจุดที่แก้ไข ] <<<<<<<<<<<<<<<<
+                            # transition_to(lambda: play_deck(fname), "Music/017. Snowy.mp3")
+                            # เราจะเรียก play_deck โดยตรง (ซึ่งจะเรียก choose_stage_and_start)
+                            # และ transition_to จะถูกเรียกจากข้างในแทน
+                            play_deck(fname)
+                            return
+                        elif text == "EDIT":
+                            transition_to(lambda: edit_deck(fname), "Music/017. Snowy.mp3")
+                        elif text == "RENAME":
+                            transition_to(lambda: rename_deck(fname), "Music/017. Snowy.mp3")
+                            return
+                        elif text == "CHANGE STYLE":
+                            transition_to(lambda: change_style(fname), "Music/017. Snowy.mp3")
+                            return
+                        elif text == "DELETE":
+                            try:
+                                os.remove(os.path.join("decks", fname + ".json"))
+                            except Exception as e:
+                                print("Delete error", e)
+                            sfx_func("SFX/boom.mp3")
+                            transition_to(free_for_all, "Music/017. Snowy.mp3")
+                            return
+
         pygame.display.update()
+
+def edit_deck(deck_name):
+    deck_path = os.path.join("decks", deck_name + ".json")
+    os.makedirs("decks", exist_ok=True)
+
+    # โหลด deck ถ้ามีอยู่แล้ว
+    if os.path.exists(deck_path):
+        with open(deck_path, "r", encoding="utf-8") as f:
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError:
+                data = {"style": "Image/cards/card.png", "cards": []}
+    else:
+        data = {"style": "Image/cards/card.png", "cards": []}
+
+    # ดึงข้อมูลจาก dict
+    words = data.get("cards", [])
+    style_path = data.get("style", "Image/cards/card.png")
+
+    MAX_WORDS = 30
+    input_word = ""
+    input_meaning = ""
+    active_input = "word"
+
+    # Scroll control
+    scroll_offset = 0
+    scroll_speed = 40
+    clock = pygame.time.Clock()
+
+    while True:
+        EDIT_MOUSE_POS = pygame.mouse.get_pos()
+        dt = clock.tick(60) / 16.67
+        cw_bg = pygame.image.load("Image/Background/crafting-witch.png")
+        SCREEN.blit(cw_bg, (0, 0))
+
+        if not 23 - len(input_word):
+            word_ismax = (255, 0, 0)
+        else:
+            word_ismax = triadic_3
+
+        if not 23 - len(input_meaning):
+            mean_ismax = (255, 0,0 )
+        else:
+            mean_ismax = triadic_3
+
+        if input_word.strip() and input_meaning.strip() and len(words) < MAX_WORDS:
+            all_ismax = triadic_3
+        else:
+            all_ismax = (255, 0, 0)
+
+        # -------------------------------
+        # Title
+        # -------------------------------
+        TITLE = get_font(70, 2).render(f"Edit Deck: {deck_name}", True, triadic_3)
+        SCREEN.blit(TITLE, TITLE.get_rect(center=(screen_width // 2, 140)))
+
+        hint = get_font(35, 1).render(f"Max Characters Is 23 Per Box", True, triadic_3)
+        SCREEN.blit(hint, hint.get_rect(center=(screen_width // 2, 200)))
+
+        word_left = get_font(35, 1).render(f"Word Characters Left : {23 - len(input_word)}", True, word_ismax)
+        SCREEN.blit(word_left, word_left.get_rect(center=(screen_width//2 - 330, 350)))
+
+        mean_left = get_font(35, 1).render(f"Word Characters Left : {23 - len(input_meaning)}", True, mean_ismax)
+        SCREEN.blit(mean_left, mean_left.get_rect(center=(screen_width//2 + 340, 350)))
+
+        # กล่องใส่คำ
+        word_box = pygame.Rect(screen_width//2 - 600, 250, 550, 70)
+        meaning_box = pygame.Rect(screen_width//2 + 70, 250, 550, 70)
+        pygame.draw.rect(SCREEN, (220, 180, 255) if active_input == "word" else (255, 255, 255), word_box, border_radius=8)
+        pygame.draw.rect(SCREEN, triadic_3, word_box, 3, border_radius=8)
+        pygame.draw.rect(SCREEN, (220, 180, 255) if active_input == "meaning" else (255, 255, 255), meaning_box, border_radius=8)
+        pygame.draw.rect(SCREEN, triadic_3, meaning_box, 3, border_radius=8)
+
+        SCREEN.blit(get_font(35, 2).render(input_word or "Word", True, (90, 0, 130)), (word_box.x + 20, word_box.y + 15))
+        SCREEN.blit(get_font(35, 2).render(input_meaning or "Meaning", True, (90, 0, 130)), (meaning_box.x + 20, meaning_box.y + 15))
+
+        # ปุ่ม Add / Back
+        ADD_BUTTON = Button(image=None, pos=(screen_width//2, 400),
+                            text_input="ADD WORD", font=get_font(55, 1),
+                            base_color=(200, 180, 255), hovering_color=all_ismax)
+        BACK_BUTTON = Button(image=None, pos=(screen_width//2, 950),
+                             text_input="BACK", font=get_font(75, 1),
+                             base_color=triadic_3, hovering_color=triadic_2)
+        for button in [ADD_BUTTON, BACK_BUTTON]:
+            button.changeColor(EDIT_MOUSE_POS)
+            button.update(SCREEN)
+
+        # แสดงคำใน deck
+        list_start_y = 500 + scroll_offset
+        item_height = 50
+        total_height = len(words) * item_height
+        visible_top = 480
+        visible_bottom = screen_height - 200
+
+        for i, item in enumerate(words):
+            y_pos = list_start_y + i * item_height
+            if y_pos < visible_top - item_height or y_pos > visible_bottom + item_height:
+                continue
+
+            word_display = f"{i+1}. {item['word']}  -  {item['meaning']}"
+            SCREEN.blit(get_font(35, 2).render(word_display, True, triadic_2), (screen_width//2 - 520, y_pos))
+
+            # ปุ่มลบ
+            del_rect = pygame.Rect(screen_width//2 + 530, y_pos, 100, 40)
+            pygame.draw.rect(SCREEN, (255, 80, 80), del_rect, border_radius=5)
+            SCREEN.blit(get_font(30, 1).render("DEL", True, (255,255,255)), del_rect.move(20, 5))
+
+            # ตรวจจับลบ
+            if pygame.mouse.get_pressed()[0] and del_rect.collidepoint(EDIT_MOUSE_POS):
+                sfx_func("SFX/boom.mp3")
+                del words[i]
+                data["cards"] = words
+                with open(deck_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=4)
+                break
+
+        # Counter
+        counter_text = get_font(30, 1).render(f"{len(words)}/{MAX_WORDS} words", True, triadic_2)
+        SCREEN.blit(counter_text, (screen_width//2 + 550, screen_height//2 - 460))
+
+        # Scroll bar
+        if total_height > (visible_bottom - visible_top):
+            bar_h = max(50, (visible_bottom - visible_top)**2 / total_height)
+            bar_y = visible_top + (-scroll_offset / total_height) * (visible_bottom - visible_top - bar_h)
+            pygame.draw.rect(SCREEN, triadic_3, (screen_width - 50, bar_y, 15, bar_h), border_radius=6)
+
+        # Event
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+
+            if event.type == pygame.MOUSEWHEEL:
+                scroll_offset += event.y * scroll_speed
+                scroll_offset = max(min(0, scroll_offset), visible_bottom - (total_height + visible_top))
+
+            if event.type == pygame.KEYDOWN:
+                sfx_func("SFX/Click.mp3")
+                if event.key == pygame.K_ESCAPE:
+                    transition_to(deck_choice_menu(deck_name), "Music/017. Snowy.mp3")
+                    return
+                elif event.key == pygame.K_TAB:
+                    active_input = "meaning" if active_input == "word" else "word"
+                elif event.key == pygame.K_BACKSPACE:
+                    if active_input == "word":
+                        input_word = input_word[:-1]
+                    else:
+                        input_meaning = input_meaning[:-1]
+                elif event.key == pygame.K_RETURN:
+                    if input_word.strip() and input_meaning.strip() and len(words) < MAX_WORDS:
+                        words.append({"word": input_word.strip(), "meaning": input_meaning.strip()})
+                        input_word, input_meaning = "", ""
+                        data["cards"] = words
+                        with open(deck_path, "w", encoding="utf-8") as f:
+                            json.dump(data, f, ensure_ascii=False, indent=4)
+                    else:
+                        sfx_func("SFX/wrong.mp3")
+                else:
+                    if active_input == "word" and len(input_word) < 23:
+                        input_word += event.unicode
+                    elif active_input == "meaning" and len(input_meaning) < 23:
+                        input_meaning += event.unicode
+                    else:
+                        sfx_func("SFX/wrong.mp3")
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if word_box.collidepoint(EDIT_MOUSE_POS):
+                    sfx_func("SFX/Click.mp3"); active_input = "word"
+                elif meaning_box.collidepoint(EDIT_MOUSE_POS):
+                    sfx_func("SFX/Click.mp3"); active_input = "meaning"
+                if ADD_BUTTON.checkForInput(EDIT_MOUSE_POS):
+                    if input_word.strip() and input_meaning.strip() and len(words) < MAX_WORDS:
+                        sfx_func("SFX/Click.mp3")
+                        words.append({"word": input_word.strip(), "meaning": input_meaning.strip()})
+                        input_word, input_meaning = "", ""
+                        data["cards"] = words
+                        with open(deck_path, "w", encoding="utf-8") as f:
+                            json.dump(data, f, ensure_ascii=False, indent=4)
+                    else:
+                        sfx_func("SFX/wrong.mp3")
+                if BACK_BUTTON.checkForInput(EDIT_MOUSE_POS):
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(deck_choice_menu(deck_name), "Music/017. Snowy.mp3")
+                    return
+
+        pygame.display.update()
+
+def change_style(deck_name):
+    """เปลี่ยน style ของ deck ที่เลือก"""
+    deck_path = os.path.join("decks", deck_name + ".json")
+    if not os.path.exists(deck_path):
+        print("Deck not found.")
+        transition_to(free_for_all, "Music/017. Snowy.mp3")
+        return
+
+    try:
+        with open(deck_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except:
+        data = {"cards": [], "style": "Image/cards/card.png"}
+
+    scroll_offset = 0
+    scroll_speed = 80
+
+    styles = [
+        ("Ank", "Image/cards/ank.png"),
+        ("Circle", "Image/cards/circle.png"),
+        ("Cross", "Image/cards/cross.png"),
+        ("Eye", "Image/cards/eye.png"),
+        ("Heart", "Image/cards/heart.png"),
+        ("Triple Moon", "Image/cards/triplemoon.png"),
+    ]
+
+    loaded_styles = []
+    for name, path in styles:
+        if not os.path.exists(path):
+            continue
+        icon = pygame.image.load(path).convert_alpha()
+        icon = pygame.transform.scale(icon, (335, 458))
+        loaded_styles.append((name, path, icon))
+
+    base_card = pygame.image.load("Image/cards/card.png").convert_alpha()
+    base_card = pygame.transform.scale(base_card, (335, 458))
+
+    card_hover = base_card.copy()
+    hover_surface = pygame.Surface(card_hover.get_size(), pygame.SRCALPHA)
+    hover_surface.fill((255, 255, 255, 60))
+    card_hover.blit(hover_surface, (0, 0))
+
+    while True:
+        MOUSE_POS = pygame.mouse.get_pos()
+        preparedeck_bg = pygame.image.load("Image/Background/prepare_deck.jpg")
+        SCREEN.blit(preparedeck_bg, (0, 0))
+
+        title_text = get_font(65, 1).render(f"Change Style for {deck_name}", True, triadic_3)
+        SCREEN.blit(title_text, title_text.get_rect(center=(screen_width // 2, 100)))
+
+        spacing_x = 375
+        spacing_y = 500
+        max_per_row = 3
+        box_w, box_h = 335, 458
+
+        total_rows = (len(loaded_styles) + max_per_row - 1) // max_per_row
+        grid_height = total_rows * spacing_y
+        start_x = (screen_width - (max_per_row * spacing_x - (spacing_x - box_w))) // 2
+        start_y = 250 + scroll_offset
+
+        card_buttons = []
+        for i, (name, path, icon) in enumerate(loaded_styles):
+            row = i // max_per_row
+            col = i % max_per_row
+            x = start_x + col * spacing_x
+            y = start_y + row * spacing_y
+            rect = pygame.Rect(x, y, box_w, box_h)
+
+            hovering = rect.collidepoint(MOUSE_POS)
+            SCREEN.blit(card_hover if hovering else base_card, (x, y))
+            SCREEN.blit(icon, (x, y))
+            text = get_font(35, 1).render(name, True, triadic_2)
+            SCREEN.blit(text, text.get_rect(center=(rect.centerx, rect.bottom + 20)))
+            card_buttons.append((rect, path))
+
+        BACK_BUTTON = Button(
+            image=None,
+            pos=(screen_width // 2, screen_height - 120),
+            text_input="BACK",
+            font=get_font(75, 1),
+            base_color=triadic_3,
+            hovering_color=triadic_2,
+        )
+        BACK_BUTTON.changeColor(MOUSE_POS)
+        BACK_BUTTON.update(SCREEN)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+
+            if event.type == pygame.MOUSEWHEEL:
+                scroll_offset += event.y * scroll_speed
+                max_scroll = 0
+                min_scroll = min(0, screen_height - (grid_height + 400))
+                scroll_offset = max(min_scroll, min(scroll_offset, max_scroll))
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                for rect, path in card_buttons:
+                    if rect.collidepoint(MOUSE_POS):
+                        data["style"] = path
+                        with open(deck_path, "w", encoding="utf-8") as f:
+                            json.dump(data, f, ensure_ascii=False, indent=4)
+                        sfx_func("SFX/Click.mp3")
+                        transition_to(lambda: deck_choice_menu(deck_name), "Music/017. Snowy.mp3")
+                        return
+                if BACK_BUTTON.checkForInput(MOUSE_POS):
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(lambda: deck_choice_menu(deck_name), "Music/017. Snowy.mp3")
+                    return
+
+        pygame.display.update()
+
+def rename_deck(old_name):
+    deck_dir = "decks"
+    old_path = os.path.join(deck_dir, old_name + ".json")
+    user_input = old_name
+    clock = pygame.time.Clock()
+    error_text = ""
+    error_timer = 0
+
+    while True:
+        RENAME_MOUSE_POS = pygame.mouse.get_pos()
+        bg = pygame.image.load("Image/Background/editing_deck3.png")
+        SCREEN.blit(bg, (0, 0))
+
+        PROMPT = get_font(55, 1).render("Enter New Deck Name:", True, triadic_2)
+        SCREEN.blit(PROMPT, PROMPT.get_rect(center=(screen_width//2, 250)))
+
+        BOX = pygame.Rect(screen_width//2 - 300, 350, 600, 80)
+        pygame.draw.rect(SCREEN, (255,255,255), BOX, border_radius=8)
+        pygame.draw.rect(SCREEN, triadic_2, BOX, 3, border_radius=8)
+        SCREEN.blit(get_font(50, 2).render(user_input, True, (90,0,130)), (BOX.x + 20, BOX.y))
+
+        BACK_BUTTON = Button(None, (screen_width//2, 800), "BACK", get_font(75, 1), triadic_3, triadic_2)
+        SAVE_BUTTON = Button(None, (screen_width//2, 600), "SAVE", get_font(75, 1), (200,180,255), (255,255,255))
+
+        for b in [BACK_BUTTON, SAVE_BUTTON]:
+            b.changeColor(RENAME_MOUSE_POS)
+            b.update(SCREEN)
+
+        if error_text:
+            err_surface = get_font(40, 1).render(error_text, True, (255, 60, 60))
+            SCREEN.blit(err_surface, err_surface.get_rect(center=(screen_width//2, 500)))
+            error_timer -= clock.get_time()
+            if error_timer <= 0:
+                error_text = ""
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+            if event.type == pygame.KEYDOWN:
+                sfx_func("SFX/Click.mp3")
+                if event.key == pygame.K_ESCAPE:
+                    transition_to(lambda: deck_choice_menu(old_name), "Music/017. Snowy.mp3")
+                    return
+                elif event.key == pygame.K_BACKSPACE:
+                    user_input = user_input[:-1]
+                elif event.key == pygame.K_RETURN:
+                    new_name = user_input.strip()
+                    new_path = os.path.join(deck_dir, new_name + ".json")
+                    if not new_name:
+                        error_text = "Name cannot be empty!"
+                        error_timer = 2000
+                    elif os.path.exists(new_path):
+                        error_text = "Deck name already exists!"
+                        error_timer = 2000
+                    else:
+                        os.rename(old_path, new_path)
+                        transition_to(lambda: deck_choice_menu(new_name), "Music/017. Snowy.mp3")
+                        return
+                else:
+                    if len(user_input) < 20:
+                        user_input += event.unicode
+                    else:
+                        sfx_func("SFX/wrong.mp3")
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if BACK_BUTTON.checkForInput(RENAME_MOUSE_POS):
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(lambda: deck_choice_menu(old_name), "Music/017. Snowy.mp3")
+                    return
+                if SAVE_BUTTON.checkForInput(RENAME_MOUSE_POS):
+                    sfx_func("SFX/Click.mp3")
+                    new_name = user_input.strip()
+                    new_path = os.path.join(deck_dir, new_name + ".json")
+                    if not new_name:
+                        sfx_func("SFX/wrong.mp3")
+                        error_text = "Name cannot be empty!"
+                        error_timer = 2000
+                    elif os.path.exists(new_path):
+                        sfx_func("SFX/wrong.mp3")
+                        error_text = "Deck name already exists!"
+                        error_timer = 2000
+                    else:
+                        os.rename(old_path, new_path)
+                        transition_to(lambda: deck_choice_menu(new_name), "Music/017. Snowy.mp3")
+                        return
+
+        pygame.display.update()
+        clock.tick(60)
+
 
 def choose_card_style():
     scroll_offset = 0
@@ -559,243 +1738,6 @@ def choose_card_style():
                 if BACK_BUTTON.checkForInput(MOUSE_POS):
                     sfx_func("SFX/Click.mp3")
                     transition_to(free_for_all, "Music/017. Snowy.mp3")
-                    return
-
-        pygame.display.update()
-
-
-def play_deck(deck_name):
-    deck_path = os.path.join("decks", deck_name + ".json")
-
-    while True:
-        PLAY_MOUSE_POS = pygame.mouse.get_pos()
-        # screen_color()
-        editdeck3_bg = pygame.image.load("Image/Background/editing_deck3.png")
-        SCREEN.blit(editdeck3_bg, (0, 0))
-
-        TITLE = get_font(70, 1).render(deck_name, True, triadic_3)
-        TITLE_RECT = TITLE.get_rect(center=(screen_width//2, 200))
-        SCREEN.blit(TITLE, TITLE_RECT)
-
-        TEXT = get_font(45, 1).render("This deck is ready for flashcard creation!", True, triadic_2)
-        TEXT_RECT = TEXT.get_rect(center=(screen_width//2, 400))
-        SCREEN.blit(TEXT, TEXT_RECT)
-
-        EDIT_BUTTON = Button(image=None, pos=(screen_width//2, 600),
-                            text_input="EDIT DECK", font=get_font(75, 1),
-                            base_color=(200,180,255), hovering_color=(255,255,255))
-        BACK_BUTTON = Button(image=None, pos=(screen_width//2, 800),
-                            text_input="BACK", font=get_font(75, 1),
-                            base_color=triadic_3, hovering_color=triadic_2)
-        for button in [EDIT_BUTTON, BACK_BUTTON]:
-            button.changeColor(PLAY_MOUSE_POS)
-            button.update(SCREEN)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit(); sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if EDIT_BUTTON.checkForInput(PLAY_MOUSE_POS):
-                    sfx_func("SFX/Click.mp3")
-                    transition_to(lambda: edit_deck(deck_name), "Music/017. Snowy.mp3")
-                    return
-                if BACK_BUTTON.checkForInput(PLAY_MOUSE_POS):
-                    sfx_func("SFX/Click.mp3")
-                    transition_to(free_for_all, "Music/017. Snowy.mp3")
-                    return
-
-        pygame.display.update()
-
-def edit_deck(deck_name):
-    deck_path = os.path.join("decks", deck_name + ".json")
-    os.makedirs("decks", exist_ok=True)
-
-    # โหลด deck ถ้ามีอยู่แล้ว
-    if os.path.exists(deck_path):
-        with open(deck_path, "r", encoding="utf-8") as f:
-            try:
-                words = json.load(f)
-            except json.JSONDecodeError:
-                words = []
-    else:
-        words = []
-
-    # 🔧 เผื่อ deck เก่ามี key "cards"
-    if isinstance(words, dict):
-        words = words.get("cards", [])
-
-    MAX_WORDS = 30
-    input_word = ""
-    input_meaning = ""
-    active_input = "word"
-
-    # Scroll control
-    scroll_offset = 0
-    scroll_speed = 40
-    clock = pygame.time.Clock()
-
-    while True:
-        EDIT_MOUSE_POS = pygame.mouse.get_pos()
-        dt = clock.tick(60) / 16.67  # ล็อก FPS
-        # screen_color()
-        cw_bg = pygame.image.load("Image/Background/crafting-witch.png")
-        SCREEN.blit(cw_bg, (0, 0))
-
-        if not 23 - len(input_word):
-            word_ismax = (255, 0, 0)
-        else:
-            word_ismax = triadic_3
-
-        if not 23 - len(input_meaning):
-            mean_ismax = (255, 0,0 )
-        else:
-            mean_ismax = triadic_3
-
-        if input_word.strip() and input_meaning.strip() and len(words) < MAX_WORDS:
-            all_ismax = triadic_3
-        else:
-            all_ismax = (255, 0, 0)
-
-        # -------------------------------
-        # Title
-        # -------------------------------
-        TITLE = get_font(70, 2).render(f"Edit Deck: {deck_name}", True, triadic_3)
-        SCREEN.blit(TITLE, TITLE.get_rect(center=(screen_width // 2, 140)))
-
-        hint = get_font(35, 1).render(f"Max Characters Is 23 Per Box", True, triadic_3)
-        SCREEN.blit(hint, hint.get_rect(center=(screen_width // 2, 200)))
-
-        word_left = get_font(35, 1).render(f"Word Characters Left : {23 - len(input_word)}", True, word_ismax)
-        SCREEN.blit(word_left, word_left.get_rect(center=(screen_width//2 - 330, 350)))
-
-        mean_left = get_font(35, 1).render(f"Word Characters Left : {23 - len(input_meaning)}", True, mean_ismax)
-        SCREEN.blit(mean_left, mean_left.get_rect(center=(screen_width//2 + 340, 350)))
-
-        # -------------------------------
-        # กล่องใส่คำศัพท์
-        # -------------------------------
-        word_box = pygame.Rect(screen_width//2 - 600, 250, 550, 70)
-        meaning_box = pygame.Rect(screen_width//2 + 70, 250, 550, 70)
-
-        word_color = (220, 180, 255) if active_input == "word" else (255, 255, 255)
-        meaning_color = (220, 180, 255) if active_input == "meaning" else (255, 255, 255)
-
-        pygame.draw.rect(SCREEN, word_color, word_box, border_radius=8)
-        pygame.draw.rect(SCREEN, triadic_3, word_box, 3, border_radius=8)
-        pygame.draw.rect(SCREEN, meaning_color, meaning_box, border_radius=8)
-        pygame.draw.rect(SCREEN, triadic_3, meaning_box, 3, border_radius=8)
-
-        word_text = get_font(35, 2).render(input_word or "Word", True, (90, 0, 130))
-        meaning_text = get_font(35, 2).render(input_meaning or "Meaning", True, (90, 0, 130))
-        SCREEN.blit(word_text, (word_box.x + 20, word_box.y + 15))
-        SCREEN.blit(meaning_text, (meaning_box.x + 20, meaning_box.y + 15))
-
-        # -------------------------------
-        # ปุ่ม Add / Back
-        # -------------------------------
-        ADD_BUTTON = Button(image=None, pos=(screen_width//2, 400),
-                            text_input="ADD WORD", font=get_font(55, 1),
-                            base_color=(200, 180, 255), hovering_color=all_ismax)
-        BACK_BUTTON = Button(image=None, pos=(screen_width//2, 950),
-                             text_input="BACK", font=get_font(75, 1),
-                             base_color=triadic_3, hovering_color=triadic_2)
-        for button in [ADD_BUTTON, BACK_BUTTON]:
-            button.changeColor(EDIT_MOUSE_POS)
-            button.update(SCREEN)
-
-        # -------------------------------
-        # พื้นที่เลื่อนของคำทั้งหมด
-        # -------------------------------
-        list_start_y = 500 + scroll_offset
-        item_height = 50
-        total_height = len(words) * item_height
-        visible_top = 480
-        visible_bottom = screen_height - 200
-
-        for i, item in enumerate(words):
-            y_pos = list_start_y + i * item_height
-            if y_pos < visible_top - item_height or y_pos > visible_bottom + item_height:
-                continue  # ข้ามถ้าอยู่นอกจอ
-
-            word_display = f"{i+1}. {item['word']}  -  {item['meaning']}"
-            word_text = get_font(35, 2).render(word_display, True, triadic_2) #คำกำลังกรอก
-            SCREEN.blit(word_text, (screen_width//2 - 400, y_pos))
-
-        # -------------------------------
-        # Counter
-        # -------------------------------
-        counter_text = get_font(30, 1).render(f"{len(words)}/{MAX_WORDS} words", True, triadic_2) #30 คำที่ใส่
-        SCREEN.blit(counter_text, (screen_width//2 + 550, screen_height//2 - 460))
-
-        # -------------------------------
-        # Scrollbar (แสดงให้เห็นว่ามีเลื่อน)
-        # -------------------------------
-        if total_height > (visible_bottom - visible_top):
-            bar_h = max(50, (visible_bottom - visible_top) * (visible_bottom - visible_top) / total_height)
-            bar_y = visible_top + (-scroll_offset / total_height) * (visible_bottom - visible_top - bar_h)
-            pygame.draw.rect(SCREEN, triadic_3, (screen_width - 50, bar_y, 15, bar_h), border_radius=6)
-
-        # -------------------------------
-        # Event Handler
-        # -------------------------------
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit(); sys.exit()
-
-            # scroll mouse wheel
-            if event.type == pygame.MOUSEWHEEL:
-                scroll_offset += event.y * scroll_speed
-                max_scroll = 0
-                min_scroll = min(0, visible_bottom - (total_height + visible_top))
-                scroll_offset = max(min_scroll, min(scroll_offset, max_scroll))
-
-            if event.type == pygame.KEYDOWN:
-                sfx_func("SFX/Click.mp3")
-                if event.key == pygame.K_ESCAPE:
-                    transition_to(deck_choice_menu(deck_name), "Music/017. Snowy.mp3")
-                    return
-                elif event.key == pygame.K_TAB:
-                    active_input = "meaning" if active_input == "word" else "word"
-                elif event.key == pygame.K_BACKSPACE:
-                    if active_input == "word":
-                        input_word = input_word[:-1]
-                    else:
-                        input_meaning = input_meaning[:-1]
-                elif event.key == pygame.K_RETURN:
-                    if input_word.strip() and input_meaning.strip() and len(words) < MAX_WORDS:
-                        words.append({"word": input_word.strip(), "meaning": input_meaning.strip()})
-                        input_word, input_meaning = "", ""
-                        with open(deck_path, "w", encoding="utf-8") as f:
-                            json.dump(words, f, ensure_ascii=False, indent=4)
-                    else:
-                        sfx_func("SFX/wrong.mp3")
-                else:
-                    if active_input == "word" and len(input_word) < 23:
-                        input_word += event.unicode
-                    elif active_input == "meaning" and len(input_meaning) < 23:
-                        input_meaning += event.unicode
-                    else:
-                        sfx_func("SFX/wrong.mp3")
-
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if word_box.collidepoint(EDIT_MOUSE_POS):
-                    sfx_func("SFX/Click.mp3")
-                    active_input = "word"
-                elif meaning_box.collidepoint(EDIT_MOUSE_POS):
-                    sfx_func("SFX/Click.mp3")
-                    active_input = "meaning"
-                if ADD_BUTTON.checkForInput(EDIT_MOUSE_POS):
-                    if input_word.strip() and input_meaning.strip() and len(words) < MAX_WORDS:
-                        sfx_func("SFX/Click.mp3")
-                        words.append({"word": input_word.strip(), "meaning": input_meaning.strip()})
-                        input_word, input_meaning = "", ""
-                        with open(deck_path, "w", encoding="utf-8") as f:
-                            json.dump(words, f, ensure_ascii=False, indent=4)
-                    else:
-                        sfx_func("SFX/wrong.mp3")
-                if BACK_BUTTON.checkForInput(EDIT_MOUSE_POS):
-                    sfx_func("SFX/Click.mp3")
-                    transition_to(deck_choice_menu(deck_name), "Music/017. Snowy.mp3")
                     return
 
         pygame.display.update()
@@ -1020,4 +1962,6 @@ def intro():
                     transition_to(main_menu, "Music/092. Reunited.mp3")
                     return
 
+# --- [เพิ่ม] เรียกใช้ Cache Monster ก่อนเริ่มเกม ---
+load_monster_sprite_cache()
 intro()
