@@ -1,0 +1,125 @@
+{
+    "style": "Image/cards/triplemoon.png",
+    "cards": [
+        {
+            "word": "Dog",
+            "meaning": "สุนัข"
+        },
+        {
+            "word": "Cat",
+            "meaning": "แมว"
+        },
+        {
+            "word": "Bird",
+            "meaning": "นก"
+        },
+        {
+            "word": "Fish",
+            "meaning": "ปลา"
+        },
+        {
+            "word": "Lion",
+            "meaning": "สิงโต"
+        },
+        {
+            "word": "Tiger",
+            "meaning": "เสือ"
+        },
+        {
+            "word": "Elephant",
+            "meaning": "ช้าง"
+        },
+        {
+            "word": "Monkey",
+            "meaning": "ลิง"
+        },
+        {
+            "word": "Snake",
+            "meaning": "งู"
+        },
+        {
+            "word": "Horse",
+            "meaning": "ม้า"
+        },
+        {
+            "word": "Cow",
+            "meaning": "วัว"
+        },
+        {
+            "word": "Pig",
+            "meaning": "หมู"
+        },
+        {
+            "word": "Chicken",
+            "meaning": "ไก่"
+        },
+        {
+            "word": "Duck",
+            "meaning": "เป็ด"
+        },
+        {
+            "word": "Rabbit",
+            "meaning": "กระต่าย"
+        },
+        {
+            "word": "Mouse",
+            "meaning": "หนู"
+        },
+        {
+            "word": "Bear",
+            "meaning": "หมี"
+        },
+        {
+            "word": "Wolf",
+            "meaning": "หมาป่า"
+        },
+        {
+            "word": "Fox",
+            "meaning": "หมาจิ้งจอก"
+        },
+        {
+            "word": "Deer",
+            "meaning": "กวาง"
+        },
+        {
+            "word": "Giraffe",
+            "meaning": "ยีราฟ"
+        },
+        {
+            "word": "Zebra",
+            "meaning": "ม้าลาย"
+        },
+        {
+            "word": "Kangaroo",
+            "meaning": "จิงโจ้"
+        },
+        {
+            "word": "Koala",
+            "meaning": "โคอาลา"
+        },
+        {
+            "word": "Panda",
+            "meaning": "แพนด้า"
+        },
+        {
+            "word": "Crocodile",
+            "meaning": "จระเข้"
+        },
+        {
+            "word": "Hippo",
+            "meaning": "ฮิปโป"
+        },
+        {
+            "word": "Rhino",
+            "meaning": "แรด"
+        },
+        {
+            "word": "Shark",
+            "meaning": "ฉลาม"
+        },
+        {
+            "word": "Whale",
+            "meaning": "วาฬ"
+        }
+    ]
+}

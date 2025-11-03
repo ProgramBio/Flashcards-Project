@@ -1,0 +1,125 @@
+{
+    "style": "Image/cards/heart.png",
+    "cards": [
+        {
+            "word": "Domain",
+            "meaning": "โดเมน (ระดับการจำแนกสูงสุด)"
+        },
+        {
+            "word": "Phylum",
+            "meaning": "ไฟลัม (ระดับการจำแนก)"
+        },
+        {
+            "word": "Archaea",
+            "meaning": "โดเมนอาร์เคีย"
+        },
+        {
+            "word": "Bacteria",
+            "meaning": "โดเมนแบคทีเรีย"
+        },
+        {
+            "word": "Eukarya",
+            "meaning": "โดเมนยูคาเรีย (มีเยื่อหุ้มนิวเคลียส)"
+        },
+        {
+            "word": "Respiration",
+            "meaning": "การหายใจ"
+        },
+        {
+            "word": "Excretion",
+            "meaning": "การขับถ่าย"
+        },
+        {
+            "word": "Phylum Porifera",
+            "meaning": "ไฟลัมพอริเฟอรา (ฟองน้ำ)"
+        },
+        {
+            "word": "Phylum Cnidaria",
+            "meaning": "ไฟลัมไนดาเรีย (แมงกะพรุน, ปะการัง)"
+        },
+        {
+            "word": "Phylum Platyhelminthes",
+            "meaning": "ไฟลัมแพลทีเฮลมินทิส (พยาธิตัวแบน)"
+        },
+        {
+            "word": "Phylum Nematoda",
+            "meaning": "ไฟลัมนีมาโทดา (พยาธิตัวกลม)"
+        },
+        {
+            "word": "Phylum Annelida",
+            "meaning": "ไฟลัมแอนเนลิดา (ไส้เดือนดิน)"
+        },
+        {
+            "word": "Phylum Mollusca",
+            "meaning": "ไฟลัมมอลลัสกา (หอย, หมึก)"
+        },
+        {
+            "word": "Phylum Arthropoda",
+            "meaning": "ไฟลัมอาร์โธรโพดา (สัตว์ขาปล้อง)"
+        },
+        {
+            "word": "Phylum Chordata",
+            "meaning": "ไฟลัมคอร์ดาตา (สัตว์มีกระดูกสันหลัง)"
+        },
+        {
+            "word": "Phylum Echinodermata",
+            "meaning": "ไฟลัมเอไคโนเดอร์มาตา (ดาวทะเล)"
+        },
+        {
+            "word": "Phylum Bryophyta",
+            "meaning": "ไฟลัมไบรโอไฟตา (มอส)"
+        },
+        {
+            "word": "Phylum Anthophyta",
+            "meaning": "ไฟลัมแอนโทไฟตา (พืชดอก)"
+        },
+        {
+            "word": "Gills",
+            "meaning": "เหงือก (หายใจในน้ำ)"
+        },
+        {
+            "word": "Lungs",
+            "meaning": "ปอด (หายใจบนบก)"
+        },
+        {
+            "word": "Countercurrent Exchange",
+            "meaning": "กลไกการแลกเปลี่ยนสารระหว่างของเหลวสองชนิดที่ไหลไปในทิศทางตรงกันข้าม"
+        },
+        {
+            "word": "Tracheal System",
+            "meaning": "ระบบท่อลม (หายใจในแมลง)"
+        },
+        {
+            "word": "Cutaneous Respiration",
+            "meaning": "การหายใจทางผิวหนัง"
+        },
+        {
+            "word": "Stomata",
+            "meaning": "ปากใบ (การแลกเปลี่ยนแก๊สของพืช)"
+        },
+        {
+            "word": "Kidney",
+            "meaning": "ไต (อวัยวะขับถ่าย)"
+        },
+        {
+            "word": "Nephridia",
+            "meaning": "เนฟริเดียม (ขับถ่ายในไส้เดือน)"
+        },
+        {
+            "word": "Malpighian Tubules",
+            "meaning": "ท่อมัลพิเกียน (ขับถ่ายในแมลง)"
+        },
+        {
+            "word": "Flame Cell",
+            "meaning": "เฟลมเซลล์ (ขับถ่ายในพลานาเรีย)"
+        },
+        {
+            "word": "Contractile Vacuole",
+            "meaning": "คอนแทร็กไทล์ แวคิวโอล (ขับถ่ายในโพรทิสต์)"
+        },
+        {
+            "word": "Transpiration",
+            "meaning": "การคายน้ำ (การขับถ่ายของพืช)"
+        }
+    ]
+}

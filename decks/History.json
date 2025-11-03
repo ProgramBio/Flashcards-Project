@@ -1,0 +1,125 @@
+{
+    "style": "Image/cards/ank.png",
+    "cards": [
+        {
+            "word": "History",
+            "meaning": "ประวัติศาสตร์"
+        },
+        {
+            "word": "Prehistory",
+            "meaning": "ยุคก่อนประวัติศาสตร์"
+        },
+        {
+            "word": "Ancient",
+            "meaning": "ยุคโบราณ"
+        },
+        {
+            "word": "Medieval (Middle Ages)",
+            "meaning": "ยุคกลาง"
+        },
+        {
+            "word": "Renaissance",
+            "meaning": "ยุคฟื้นฟูศิลปวิทยา"
+        },
+        {
+            "word": "Revolution",
+            "meaning": "การปฏิวัติ"
+        },
+        {
+            "word": "Industrial Revolution",
+            "meaning": "การปฏิวัติอุตสาหกรรม"
+        },
+        {
+            "word": "French Revolution",
+            "meaning": "การปฏิวัติฝรั่งเศส"
+        },
+        {
+            "word": "World War I",
+            "meaning": "สงครามโลกครั้งที่ 1"
+        },
+        {
+            "word": "World War II",
+            "meaning": "สงครามโลกครั้งที่ 2"
+        },
+        {
+            "word": "Cold War",
+            "meaning": "สงครามเย็น"
+        },
+        {
+            "word": "Civilization",
+            "meaning": "อารยธรรม"
+        },
+        {
+            "word": "Empire",
+            "meaning": "จักรวรรดิ"
+        },
+        {
+            "word": "Dynasty",
+            "meaning": "ราชวงศ์"
+        },
+        {
+            "word": "Feudalism",
+            "meaning": "ระบบฟิวดัล (ศักดินาสวามิภักดิ์)"
+        },
+        {
+            "word": "Colonialism",
+            "meaning": "ลัทธิล่าอาณานิคม"
+        },
+        {
+            "word": "Treaty",
+            "meaning": "สนธิสัญญา"
+        },
+        {
+            "word": "Artifact",
+            "meaning": "โบราณวัตถุ"
+        },
+        {
+            "word": "Archaeology",
+            "meaning": "โบราณคดี"
+        },
+        {
+            "word": "Monarchy",
+            "meaning": "ระบอบกษัตริย์"
+        },
+        {
+            "word": "Democracy",
+            "meaning": "ระบอบประชาธิปไตย"
+        },
+        {
+            "word": "Sukhothai Kingdom",
+            "meaning": "อาณาจักรสุโขทัย"
+        },
+        {
+            "word": "Ayutthaya Kingdom",
+            "meaning": "อาณาจักรอยุธยา"
+        },
+        {
+            "word": "Rattanakosin Kingdom",
+            "meaning": "อาณาจักรรัตนโกสินทร์"
+        },
+        {
+            "word": "Chakri Dynasty",
+            "meaning": "ราชวงศ์จักรี"
+        },
+        {
+            "word": "King Chulalongkorn (Rama V)",
+            "meaning": "รัชกาลที่ 5 (พระบาทสมเด็จพระจุลจอมเกล้าเจ้าอยู่หัว)"
+        },
+        {
+            "word": "Abolition of Slavery (Thai)",
+            "meaning": "การเลิกทาส (ในไทย)"
+        },
+        {
+            "word": "Bowring Treaty",
+            "meaning": "สนธิสัญญาเบาว์ริง"
+        },
+        {
+            "word": "Siamese Revolution of 1932",
+            "meaning": "การปฏิวัติสยาม พ.ศ. 2475"
+        },
+        {
+            "word": "Constitution",
+            "meaning": "รัฐธรรมนูญ"
+        }
+    ]
+}
