@@ -684,10 +684,10 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
             if not queue: 
                 if not wrong_cards: 
                     if all(mhp <= 0 for mhp in monster_hp):
-                         result = "VICTORY"
+                        result = "VICTORY"
                     else:
-                         log("Cards finished, but monsters remain...", (255, 100, 100))
-                         result = "DEFEAT"
+                        log("Cards finished, but monsters remain...", (255, 100, 100))
+                        result = "DEFEAT"
                     running = False 
                     continue 
                 else:
@@ -914,11 +914,13 @@ def choose_stage_and_start(deck_name):
         # ไม่สามารถเริ่มได้ (การ์ดน้อยกว่า 5)
         while True:
             MOUSE_POS = pygame.mouse.get_pos()
-            screen_color()
+            # SCREEN.fill(basecolor)
+            nec = pygame.image.load("Image/Background/not-enough-card.png")
+            SCREEN.blit(nec, (0, 0))
             err_text = get_font(40, 2).render(f"Deck '{deck_name}' needs at least 5 cards to play.", True, (255, 100, 100))
             SCREEN.blit(err_text, err_text.get_rect(center=(screen_width//2, screen_height//2 - 50)))
-            
-            BACK_BUTTON = Button(None, (screen_width//2, screen_height//2 + 100), "BACK", get_font(75, 1), triadic_2, triadic_3)
+
+            BACK_BUTTON = Button(image=pygame.image.load("Image/buttonn.png"), pos=(screen_width//2, screen_height//2 + 100), text_input="BACK", font=get_font(75, 1), base_color=triadic_2, hovering_color=triadic_3)
             BACK_BUTTON.changeColor(MOUSE_POS)
             BACK_BUTTON.update(SCREEN)
 
@@ -1385,9 +1387,9 @@ def edit_deck(deck_name):
         ADD_BUTTON = Button(image=None, pos=(screen_width//2, 400),
                             text_input="ADD WORD", font=get_font(55, 1),
                             base_color=(200, 180, 255), hovering_color=all_ismax)
-        BACK_BUTTON = Button(image=None, pos=(screen_width//2, 950),
-                             text_input="BACK", font=get_font(75, 1),
-                             base_color=triadic_3, hovering_color=triadic_2)
+        BACK_BUTTON = Button(image=pygame.image.load("Image/buttonn.png"), pos=(screen_width//2, 950),
+                            text_input="BACK", font=get_font(75, 1),
+                            base_color=triadic_3, hovering_color=triadic_2)
         for button in [ADD_BUTTON, BACK_BUTTON]:
             button.changeColor(EDIT_MOUSE_POS)
             button.update(SCREEN)
