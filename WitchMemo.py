@@ -306,14 +306,22 @@ class DraggableCard:
                 self.snap_back = False
                 return "DRAGGING"
         
+        # --- [ แทนที่ 10 บรรทัดล่างนี้ ] ---
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             if self.is_dragging:
                 self.is_dragging = False
-                # ตรวจสอบโซนที่ปล่อย
-                if self.rect.centerx > screen_width - 400: # โซนขวา (Know)
-                    return "ANSWER_KNOW"
-                elif self.rect.centerx < 400: # โซนซ้าย (Don't Know)
+
+                # [v3 Edit] กำหนดขอบเขตของโซนให้ตรงกับ
+                # s_left_x(190) + zone_width(450) = 640
+                left_zone_end = 640 
+                # s_right_x = 1280
+                right_zone_start = 1280
+
+                # ตรวจสอบตำแหน่งที่ปล่อยเมาส์
+                if event.pos[0] < left_zone_end: # โซนซ้าย (Don't Know)
                     return "ANSWER_DONT_KNOW"
+                elif event.pos[0] > right_zone_start: # โซนขวา (Know)
+                    return "ANSWER_KNOW"
                 else:
                     self.snap_back = True # ปล่อยกลางจอ
                     return "NO_ANSWER"
@@ -441,30 +449,41 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
 
     # --- สุ่ม Sprite มอนสเตอร์ ---
     assigned_monster_sprites = []
-    monster_sprite_rects = [] # [เพิ่ม] List สำหรับเก็บ Rect ของมอนสเตอร์
-    monster_sprite_size = (150, 150) # [เพิ่ม] ขนาดตัวมอนสเตอร์
+    monster_sprite_rects = [] 
+    
+    # [แก้ไข] เลือก cache และขนาด
+    if is_boss_stage and BOSS_SPRITE_CACHE:
+        active_cache = BOSS_SPRITE_CACHE
+        monster_sprite_size = (300, 300) # บอสตัวใหญ่
+    elif MONSTER_SPRITE_CACHE:
+        active_cache = MONSTER_SPRITE_CACHE
+        monster_sprite_size = (150, 150) # มอนปกติ
+    else:
+        active_cache = [] # ไม่มี cache (จะใช้ fallback)
 
-    if MONSTER_SPRITE_CACHE:
-        # --- [แก้ไข] คำนวณตำแหน่งมอนสเตอร์ (ยึดกลางจอ) ---
-        monster_y_pos = screen_height // 4 # ตำแหน่งแกน Y (บนๆ)
+    if active_cache:
+        # --- [แก้ไข] คำนวณตำแหน่งมอนสเตอร์ (ย้ายไปขวา, เรียงบนลงล่าง) ---
         
-        # กำหนดตำแหน่ง X ตามจำนวนมอนสเตอร์
+        # X Position (คงที่, ชิดขวา)
+        monster_x_pos = screen_width - (monster_sprite_size[0] // 2) - 325
+        
+        # Y Positions (กระจายแนวตั้ง)
         if monsters_count == 1:
-            positions_x = [screen_width // 2]
+            positions_y = [screen_height // 2] # กลางจอ
         elif monsters_count == 2:
-            positions_x = [screen_width // 2 - 200, screen_width // 2 + 200]
+            positions_y = [screen_height // 2 - 180, screen_height // 2 + 180]
         else: # 3
-            positions_x = [screen_width // 2 - 350, screen_width // 2, screen_width // 2 + 350]
+            positions_y = [screen_height // 2 - 250, screen_height // 2, screen_height // 2 + 250]
 
         for i in range(monsters_count):
-            sprite_img = random.choice(MONSTER_SPRITE_CACHE)
+            sprite_img = random.choice(active_cache)
             sprite_img_scaled = pygame.transform.scale(sprite_img, monster_sprite_size)
-            sprite_rect = sprite_img_scaled.get_rect(center=(positions_x[i], monster_y_pos))
+            
+            # [แก้ไข] ใช้ x_pos และ y_pos ที่คำนวณใหม่
+            sprite_rect = sprite_img_scaled.get_rect(center=(monster_x_pos, positions_y[i]))
             
             assigned_monster_sprites.append(sprite_img_scaled)
             monster_sprite_rects.append(sprite_rect)
-
-
     # --- 3. Game State & UI ---
     game_state = "NEW_CARD" 
     current_card_obj = None
@@ -801,12 +820,10 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
 
         # --- [แก้ไข] วาด Witch Sprite (ยึดกลางจอ) ---
         if witch_img:
-            # (กลางจอ - 920 = 40, กลางจอ + ครึ่งจอ - 40 = 1040)
-            witch_x = (screen_width // 2) - 920
-            witch_y_bottom = (screen_height // 2) + (screen_height // 2) - 40
-            witch_rect = witch_img.get_rect(bottomleft=(witch_x, witch_y_bottom))
+            witch_x_left = screen_width//2 - 750
+            witch_y_center = screen_height//2
+            witch_rect = witch_img.get_rect(left=witch_x_left, centery=witch_y_center)
             SCREEN.blit(witch_img, witch_rect)
-
 
         # --- [แก้ไข] วาด UI สกิล (ยึดกลางจอ) ---
         font_skill_cost = get_font(20, 1)
@@ -884,10 +901,6 @@ def show_battle_result(result, deck_name):
         pygame.display.update()
 
 def choose_stage_and_start(deck_name):
-    """
-    หน้าจอเลือกด่าน (5, 10, 15, 20, Boss)
-    นี่คือฟังก์ชันใหม่ที่มาแทน play_deck เดิม
-    """
     data = load_deck_file(deck_name)
     n_cards = len(data.get("cards", []))
     
@@ -895,7 +908,6 @@ def choose_stage_and_start(deck_name):
     if n_cards >= 5: available_stages.append(5)
     if n_cards >= 10: available_stages.append(10)
     if n_cards >= 15: available_stages.append(15)
-    if n_cards >= 20: available_stages.append(20)
     if n_cards > 20: available_stages.append(n_cards) # Boss Stage
     
     if not available_stages:
@@ -966,29 +978,10 @@ def choose_stage_and_start(deck_name):
                         # เริ่มเกม
                         result = battle_screen(deck_name, count, is_boss)
                         # แสดงผลลัพธ์
-                        show_battle_result(result, deck_name)
+                        transition_to(lambda: show_battle_result(result, deck_name), "Music/017. Snowy.mp3")
                         return # กลับไปหน้า deck_choice_menu (ผ่าน show_battle_result)
 
         pygame.display.update()
-
-def play_deck(deck_name):
-    """
-    ฟังก์ชันนี้ถูกเรียกโดย transition_to เมื่อกด "PLAY"
-    เราจะเรียกฟังก์ชันเลือกด่าน (choose_stage_and_start) จากตรงนี้
-    """
-    # หยุดเพลงที่กำลังเล่นจาก transition
-    pygame.mixer.music.fadeout(500) 
-    
-    # เรียกหน้าจอเลือกด่าน
-    choose_stage_and_start(deck_name)
-    
-    # (ฟังก์ชันนี้จะจบลงเมื่อ choose_stage_and_start/battle_screen/show_battle_result
-    # เรียก transition_to กลับไปที่ deck_choice_menu)
-    return
-
-# =================================================================
-# ===== [ 3. โค้ดเดิมของ WitchMemo.py (ไม่เปลี่ยนแปลง) ] =====
-# =================================================================
 
 def select_mode():
     background_music("Music/003. Your Best Friend.mp3", background_music_volume, -1)
@@ -1292,14 +1285,11 @@ def deck_choice_menu(fname):
                             transition_to(free_for_all, "Music/017. Snowy.mp3")
                             return
                         elif text == "PLAY":
-                            # <<<<<<<<<<<<<<<< [ นี่คือจุดที่แก้ไข ] <<<<<<<<<<<<<<<<
-                            # transition_to(lambda: play_deck(fname), "Music/017. Snowy.mp3")
-                            # เราจะเรียก play_deck โดยตรง (ซึ่งจะเรียก choose_stage_and_start)
-                            # และ transition_to จะถูกเรียกจากข้างในแทน
-                            play_deck(fname)
+                            transition_to(lambda: choose_stage_and_start(fname), "Music/017. Snowy.mp3")
                             return
                         elif text == "EDIT":
                             transition_to(lambda: edit_deck(fname), "Music/017. Snowy.mp3")
+                            return
                         elif text == "RENAME":
                             transition_to(lambda: rename_deck(fname), "Music/017. Snowy.mp3")
                             return
@@ -1314,7 +1304,6 @@ def deck_choice_menu(fname):
                             sfx_func("SFX/boom.mp3")
                             transition_to(free_for_all, "Music/017. Snowy.mp3")
                             return
-
         pygame.display.update()
 
 def edit_deck(deck_name):
@@ -1951,7 +1940,7 @@ def main_menu():
         
         witch = pygame.image.load("Image/MC Witch.png")
         witch = pygame.transform.scale(witch, (400, 400))
-        witch_rect = witch.get_rect(center=(screen_width//2 + 400, screen_height//2 + 200))
+        witch_rect = witch.get_rect(center=(screen_width//2 + 450, screen_height//2))
 
         SCREEN.blit(MENU_TEXT, MENU_RECT)
         SCREEN.blit(witch, witch_rect)
