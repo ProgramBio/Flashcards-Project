@@ -45,6 +45,7 @@ BG_TARO = load_image_asset("Image/Battle_Background/Taro_bg.png", (screen_width,
 background_music_volume = 0.5
 ishint = False #Fast mode
 answer_time = 5 #เริ่มที่ 5 วิ
+use_gravity_font = True
 
 computer_name = socket.gethostname()
 user_name = getpass.getuser()
@@ -86,13 +87,26 @@ def background_music(path, volume, loop):
         print("Error Please Check :", e)
 
 def get_font(size, which_font):
+    global use_gravity_font 
     if intro_time > 4:
         return pygame.font.SysFont("Wingdings", size)
-    else:
-        if which_font == 1:
-            return pygame.font.Font("Font/PixelMedium.ttf", size)
-        elif which_font == 2:
+    if use_gravity_font:
+        try:
+            return pygame.font.Font("Font/fs-gravity.otf", size)
+        except Exception as e:
             return pygame.font.Font("Font/SansThai.ttf", size)
+    
+    if which_font == 1:
+        return pygame.font.Font("Font/PixelMedium.ttf", size)
+    elif which_font == 2:
+        return pygame.font.Font("Font/SansThai.ttf", size)
+    elif which_font == 3:
+        try:
+            return pygame.font.Font("Font/fs-gravity.otf", size)
+        except Exception:
+            return pygame.font.Font("Font/SansThai.ttf", size)
+    
+    return pygame.font.Font("Font/PixelMedium.ttf", size)
 
 def sfx_func(sfx):
     try:
@@ -523,14 +537,14 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
     # --- โหลด Assets ---
     try:
         card_style_img = load_image_asset("Image/cards/card_font.png", (335, 458))
-        heart_full = load_image_asset("Image/Icon (buff, health-bar)/heart/heart(Full-HP).png", (64, 64))
-        heart_dmg = load_image_asset("Image/Icon (buff, health-bar)/heart/heart(damaged).png", (64, 64))
-        heart_shield_overlay = load_image_asset("Image/Icon (buff, health-bar)/heart/heart - (Sheild).PNG", (64, 64))
+        heart_full = load_image_asset("Image/Icon (buff, health-bar)/heart/heart(Full-HP).png", (84, 84))
+        heart_dmg = load_image_asset("Image/Icon (buff, health-bar)/heart/heart(damaged).png", (84, 84))
+        heart_shield_overlay = load_image_asset("Image/Icon (buff, health-bar)/heart/heart - (Sheild).PNG", (84, 84))
         
-        skill_heal_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Heal.png", (80, 80))
-        skill_shield_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Sheild.png", (80, 80))
-        skill_stop_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Freeze.png", (80, 80))
-        skill_ginger_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Gingerbread (eat 2 gain more hearts).PNG", (80, 80))
+        skill_heal_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Heal.png", (100, 100))
+        skill_shield_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Sheild.png", (100, 100))
+        skill_stop_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Freeze.png", (100, 100))
+        skill_ginger_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Gingerbread (eat 2 gain more hearts).PNG", (100, 100))
         
         # โหลดตัวละคร Witch
         witch_img = load_image_asset("Image/MC Witch.png", (300, 300))
@@ -740,7 +754,6 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
     running = True
     result = "DEFEAT" 
     
-    # vvvv #[FIX] แก้ไขตรรกะ handle_answer ทั้งหมด vvvv
     def handle_answer(answer_type):
         nonlocal game_state, reveal_until, current_card_obj, current_card_dict
         nonlocal streak, skill_points, shield_active, hp, running, result
@@ -759,46 +772,68 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                 skill_points += 1
                 log("Skill Point +1!", (255, 255, 0))
             
-            for i in range(len(monster_hp)):
-                # [FIX] เช็คว่ายังไม่ชนะ (ใช้ < max_monster_hp)
+            # vvvv #[FIX] แก้ไขตรรกะการโจมตีบอส vvvv
+            
+            if is_lost_memory_boss:
+                # --- ตรรกะของ Lost Memory (เพิ่ม HP) ---
+                i = 0 # (บอสมีตัวเดียว)
                 if monster_hp[i] < max_monster_hp:
-                    
-                    if is_lost_memory_boss:
-                        monster_hp[i] += 1 
-                        log_msg = f"Your memory is being restored... (HP: {monster_hp[i]})"
-                    else:
-                        monster_hp[i] -= 1 
-                        log_msg = f"Hit {monster_names[i]}! (HP: {monster_hp[i]})"
-                    
+                    monster_hp[i] += 1 
+                    log_msg = f"Your memory is being restored... ({monster_hp[i]})"
                     monster_flash_timers[i] = FLASH_DURATION 
                     log(log_msg) 
                     
                     if i < len(monster_sprite_rects): 
                         particle_system.emit_particles(
                             monster_sprite_rects[i].centerx, monster_sprite_rects[i].centery, 
-                            20, [(0, 255, 0), (50, 200, 50)], -7, 7, 5, 12
+                            20, [(255, 220, 0), (255, 255, 150)], -7, 7, 5, 12 # (Particle สีเหลือง)
                         )
-                    # [FIX] ย้าย break ออกไปนอกเงื่อนไขเช็คชนะ
-                    
-                # [FIX] แยกเงื่อนไขเช็คชนะออกมา
-                if (is_lost_memory_boss and monster_hp[i] >= max_monster_hp) or \
-                   (not is_lost_memory_boss and monster_hp[i] <= 0):
-                    
-                    if is_lost_memory_boss:
-                        log_msg_victory = "Memory Fully Restored!"
+                
+                if monster_hp[i] >= max_monster_hp:
+                    log("Memory Fully Restored!", (0, 255, 0))
+                    if not intro_time > 3:
+                        sfx_func("SFX/heavy-hit.mp3")
                     else:
-                        log_msg_victory = f"{monster_names[i]} defeated!"
-                        
-                    log(log_msg_victory, (0, 255, 0))
-                    sfx_func("SFX/heavy-hit.mp3")
-                    
-                    # [FIX] ตั้งค่า Victory ที่นี่
+                        sfx_func("SFX/OMG Laugh.mp3")
                     result = "VICTORY"
                     running = False
+
+            else:
+                # --- ตรรกะของมอนสเตอร์/บอสปกติ (ลด HP) ---
                 
-                # [FIX] สั่ง break ตรงนี้
-                break 
-        
+                # [FIX] ค้นหาเป้าหมายตัวแรกที่ยังไม่ตาย
+                target_index = -1
+                for i in range(len(monster_hp)):
+                    if monster_hp[i] > 0:
+                        target_index = i
+                        break # เจอเป้าหมายแล้ว
+                
+                if target_index != -1: # ถ้ามีเป้าหมาย (ยังไม่ชนะ)
+                    i = target_index # (i คือ index ของตัวที่จะโดนตี)
+                    monster_hp[i] -= 1 
+                    log_msg = f"Hit {monster_names[i]}! (HP: {monster_hp[i]})"
+                    monster_flash_timers[i] = FLASH_DURATION 
+                    log(log_msg) 
+
+                    if i < len(monster_sprite_rects): 
+                        particle_system.emit_particles(
+                            monster_sprite_rects[i].centerx, monster_sprite_rects[i].centery, 
+                            20, [(0, 255, 0), (50, 200, 50)], -7, 7, 5, 12 # (Particle สีเขียว)
+                        )
+
+                    if monster_hp[i] <= 0:
+                        log(f"{monster_names[i]} defeated!", (0, 255, 0))
+                        if not intro_time > 3:
+                            sfx_func("SFX/heavy-hit.mp3")
+                        else:
+                            sfx_func("SFX/OMG Laugh.mp3")
+                        
+                        # (เช็คว่าตายหมดหรือยัง)
+                        if all(mhp <= 0 for mhp in monster_hp):
+                            result = "VICTORY"
+                            running = False
+            # ^^^^ #[FIX] สิ้นสุดการแก้ไขตรรกะบอส ^^^^
+
         else: # "ANSWER_DONT_KNOW" หรือ "TIMEOUT"
             sfx_func("SFX/hitted.mp3")
             log("Wrong / Don't Know", (255, 100, 100))
@@ -821,15 +856,10 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                 20, [(255, 100, 100), (200, 50, 50)], -7, 7, 5, 12
             )
             
-            # [FIX] เช็คแพ้ (HP 0) ที่นี่
             if hp <= 0:
                 log("HP reached 0... You are defeated.", (255, 0, 0))
                 result = "DEFEAT"
                 running = False
-            
-        # [FIX] ลบการเช็ค 'all(mhp <= 0)' ออกจากส่วน "ตอบผิด"
-        # (เพราะมันถูกเช็คในส่วน "ตอบถูก" แล้ว)
-    # ^^^^ #[FIX] สิ้นสุดการแก้ไข handle_answer ^^^^
 
     clock = pygame.time.Clock()
     while running:
@@ -891,21 +921,24 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                     if skill_heal_btn.checkForInput(MOUSE_POS):
                         if skill_points >= skill_costs[skill_heal_btn]:
                             if max_hp == hp:
-                                log("You HP is max!", (0, 200, 255))
+                                sfx_func("SFX/mambo.mp3")
+                                log("You HP is max!", "#93BFC7")
                             else:
                                 sfx_func("SFX/heal.mp3")
                                 skill_points -= skill_costs[skill_heal_btn]
                                 hp = min(max_hp, hp + 1)
-                                log("Heal! +1 Heart.", (0, 255, 0))
+                                log("Heal! +1 Heart.", "#41A67E")
                                 sfx_func("SFX/Click.mp3")
                                 skill_used_this_turn = True 
                         else:
-                            log("Not enough SP!", (255, 100, 100))
+                            sfx_func("SFX/mambo.mp3")
+                            log("Not enough SP!", "#BF092F")
                             
                     elif skill_shield_btn.checkForInput(MOUSE_POS):
                         if skill_points >= skill_costs[skill_shield_btn]:
                             if shield_active:
-                                log("Shield Already Activated!", (0, 200, 255))
+                                sfx_func("SFX/mambo.mp3")
+                                log("Shield Already Activated!", "#93BFC7")
                             else:
                                 sfx_func("SFX/bat_hit.mp3")
                                 skill_points -= skill_costs[skill_shield_btn]
@@ -914,22 +947,25 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                                 sfx_func("SFX/Click.mp3")
                                 skill_used_this_turn = True
                         else:
-                            log("Not enough SP!", (255, 100, 100))
+                            sfx_func("SFX/mambo.mp3")
+                            log("Not enough SP!", "#BF092F")
 
                     elif skill_stop_btn.checkForInput(MOUSE_POS):
                         if skill_points >= skill_costs[skill_stop_btn]:
                             if time_stopped_for_card:
-                                log("Time Stop Already Activated!, But How", (0, 200, 255))
+                                sfx_func("SFX/mambo.mp3")
+                                log("Time Stop Already Activated!, But How", "#93BFC7")
                             else:
                                 sfx_func("SFX/time-stop.mp3")
                                 skill_points -= skill_costs[skill_stop_btn]
                                 time_stopped_for_card = True 
-                                log("Time Stop Activated!", (0, 200, 255))
+                                log("Time Stop Activated!", "#16476A")
                                 sfx_func("SFX/Click.mp3")
                                 skill_used_this_turn = True 
                                 pygame.mixer.music.pause()
                         else:
-                            log("Not enough SP!", (255, 100, 100))
+                            sfx_func("SFX/mambo.mp3")
+                            log("Not enough SP!", "#BF092F")
 
                     elif skill_maxhp_btn.checkForInput(MOUSE_POS):
                         if skill_points >= skill_costs[skill_maxhp_btn]:
@@ -937,7 +973,7 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                             if gingerbread_eaten == 0:
                                 sfx_func("SFX/nomnomnom.mp3")
                                 gingerbread_eaten = 1
-                                log("Ate 1/2 Gingerbread...", (200, 200, 200))
+                                log("Ate 1/2 Gingerbread...", "#FFBDBD")
                                 sfx_func("SFX/Click.mp3")
                                 skill_used_this_turn = True 
                             elif gingerbread_eaten == 1:
@@ -945,11 +981,12 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                                 gingerbread_eaten = 0 
                                 max_hp += 1
                                 hp += 1 
-                                log("Max HP Increased!", (255, 255, 0))
+                                log("Max HP Increased!", "#FFA4A4")
                                 sfx_func("SFX/Click.mp3")
                                 skill_used_this_turn = True 
                         else:
-                            log("Not enough SP for 2/2!", (255, 100, 100))
+                            sfx_func("SFX/mambo.mp3")
+                            log("Not enough SP!", "#BF092F")
 
         # --- 7. Game State Logic ---
         
@@ -1040,20 +1077,20 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
         hp_x_start = (screen_width // 2) - 730
         for i in range(max_hp):
             if i == (hp - 1) and shield_active:
-                SCREEN.blit(heart_shield_overlay, (hp_x_start + i * 74, 85))
+                SCREEN.blit(heart_shield_overlay, (hp_x_start + i * 94, 90))
             elif i < hp:
-                SCREEN.blit(heart_full, (hp_x_start + i * 74, 85))
+                SCREEN.blit(heart_full, (hp_x_start + i * 94, 90))
             else:
-                SCREEN.blit(heart_dmg, (hp_x_start + i * 74, 85))
+                SCREEN.blit(heart_dmg, (hp_x_start + i * 94, 90))
         
         hp_text = f"HP: {hp} / {max_hp}"
-        hp_text_surf = get_font(25, 1).render(hp_text, True, "white")
-        hp_text_rect = hp_text_surf.get_rect(left=hp_x_start, top=20 + 130)
+        hp_text_surf = get_font(35, 1).render(hp_text, True, "white")
+        hp_text_rect = hp_text_surf.get_rect(left=hp_x_start, top=20 + 150)
         SCREEN.blit(hp_text_surf, hp_text_rect)
 
         streak_text = f"Streak: {streak}"
-        streak_text_surf = get_font(25, 1).render(streak_text, True, "white")
-        streak_text_rect = streak_text_surf.get_rect(left=hp_x_start, top=20 + 150)
+        streak_text_surf = get_font(35, 1).render(streak_text, True, "white")
+        streak_text_rect = streak_text_surf.get_rect(left=hp_x_start, top=20 + 180)
         SCREEN.blit(streak_text_surf, streak_text_rect)
 
         
@@ -1160,25 +1197,31 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
             SCREEN.blit(cost_surf, cost_rect)
             
             if is_locked:
-                lock_surf = pygame.Surface((80, 80), pygame.SRCALPHA)
+                lock_surf = pygame.Surface((100, 100), pygame.SRCALPHA)
                 lock_surf.fill((0, 0, 0, 180))
                 SCREEN.blit(lock_surf, btn.rect.topleft)
-            elif skill_points < cost and (btn != skill_maxhp_btn or (btn == skill_maxhp_btn and gingerbread_eaten == 0)):
-                lock_surf = pygame.Surface((80, 80), pygame.SRCALPHA)
+            
+            not_enough_sp = False
+            if btn == skill_maxhp_btn:
+                # ถ้าเป็น Gingerbread: จะแดงก็ต่อเมื่อ แต้ม < 1
+                if skill_points < cost:
+                    not_enough_sp = True
+            else:
+                # ปุ่มอื่น: แดงเมื่อแต้มไม่พอ
+                if skill_points < cost:
+                    not_enough_sp = True
+
+            if not is_locked and not_enough_sp:
+                lock_surf = pygame.Surface((100, 100), pygame.SRCALPHA)
                 lock_surf.fill((200, 0, 0, 100))
                 SCREEN.blit(lock_surf, btn.rect.topleft)
-
-        # --- [แก้ไข] วาด Game Log (ยึดกลางจอ) ---
+        #วาด Game Log (ยึดกลางจอ) ---
         log_y_start = (screen_height // 2) + 200
         log_x = (screen_width // 2) - 700 
         for i, (msg, color) in enumerate(game_log):
             SCREEN.blit(get_font(22, 2).render(msg, True, color), (log_x, log_y_start + i * 25)) 
 
-        # vvvv [PARTICLE] 5. วาด Particle System (วาดท้ายสุด) vvvv
         particle_system.draw(SCREEN)
-        # ^^^^ [PARTICLE] ^^^^
-        
-        # vvvv #[LOST_SOUL] 4. อัปเดตและวาดกล่องสี่เหลี่ยม vvvv
         if is_lost_memory_boss:
             
             # 1. อัปเดตกล่องที่มีอยู่ (นับถอยหลังอายุ)
@@ -1197,7 +1240,7 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                 box_h = random.randint(50, 150)
                 box_x = random.randint(0, screen_width - box_w)
                 box_y = random.randint(0, screen_height - box_h)
-                box_lifetime = random.randint(5, 15) # อายุขัย (เฟรม)
+                box_lifetime = random.randint(5, 25) # เวลา (เฟรม)
                 
                 new_box = {'rect': pygame.Rect(box_x, box_y, box_w, box_h), 'timer': box_lifetime}
                 lost_soul_boxes.append(new_box)
@@ -1205,9 +1248,6 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
             # 3. วาดกล่องทั้งหมด
             for box in lost_soul_boxes:
                 pygame.draw.rect(SCREEN, (255, 255, 255), box['rect']) # วาดสี่เหลี่ยมสีขาวทึบ
-        # ^^^^ #[LOST_SOUL] ^^^^
-
-
         pygame.display.flip()
 
     # --- 9. Battle End ---
@@ -1217,12 +1257,19 @@ def show_battle_result(result, deck_name):
     """
     หน้าจอสรุปผลแพ้/ชนะ
     """
-    sfx_func("SFX/victory.mp3") if result == "VICTORY" else sfx_func("SFX/fail.mp3")
+    if not intro_time > 3:
+        sfx_func("SFX/victory.mp3") if result == "VICTORY" else sfx_func("SFX/fail.mp3")
+    else:
+        sfx_func("SFX/OMG Laugh.mp3")
     
     while True:
         MOUSE_POS = pygame.mouse.get_pos()
-        SCREEN.fill(basecolor if result == "VICTORY" else (50, 0, 0))
-        result_text_surf = get_font(100, 1).render(result, True, triadic_3 if result == "VICTORY" else (255, 50, 50))
+        if not intro_time > 3:
+            SCREEN.fill(basecolor if result == "VICTORY" else (50, 0, 0))
+            result_text_surf = get_font(100, 1).render(result, True, triadic_3 if result == "VICTORY" else (255, 50, 50))
+        else:
+            screen_color()
+            result_text_surf = get_font(100, 1).render(result, True, "red" if result == "VICTORY" else "red")
         SCREEN.blit(result_text_surf, result_text_surf.get_rect(center=(screen_width//2, screen_height//2 - 100)))
 
         BACK_BUTTON = Button(None, (screen_width//2, screen_height//2 + 100), "BACK", get_font(75, 1), triadic_2, triadic_3)
@@ -1232,6 +1279,11 @@ def show_battle_result(result, deck_name):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    sfx_func("SFX/Click.mp3")
+                    transition_to(lambda: deck_choice_menu(deck_name), "Music/017. Snowy.mp3")
+                    return
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if BACK_BUTTON.checkForInput(MOUSE_POS):
                     sfx_func("SFX/Click.mp3")
@@ -2225,57 +2277,56 @@ def story_mode():
         pygame.display.update()
 
 def options():
-    global background_music_volume, ishint, answer_time
+    global background_music_volume, ishint, answer_time, use_gravity_font
+    
     while True:
         OPTIONS_MOUSE_POS = pygame.mouse.get_pos()
         
-        # [แก้ไข] ใช้ BG ที่โหลดไว้ล่วงหน้า
         if intro_time > 3:
             screen_color()
         else:
             SCREEN.blit(BG_OPTIONS, (0, 0))
         
-        # ปุ่มเพิ่ม/ลดเสียง
+        # --- (ส่วน Music Volume เหมือนเดิม) ---
         OPTIONS_TEXT = get_font(45, 1).render("Background Music Volume", True, triadic_2)
         OPTIONS_RECT = OPTIONS_TEXT.get_rect(center=(screen_width//2, 200))
         SCREEN.blit(OPTIONS_TEXT, OPTIONS_RECT)
-
         PLUS_BUTTON = Button(image=None, pos=(screen_width//2 + 150, 250),
                             text_input="+", font=get_font(75, 1), base_color=(200,180,255), hovering_color=(255,255,255))
         MINUS_BUTTON = Button(image=None, pos=(screen_width//2 - 150, 250),
                             text_input="-", font=get_font(75, 1), base_color=(200,180,255), hovering_color=(255,255,255))
-        
         VOL_TEXT = get_font(55, 1).render(str(int(round(background_music_volume * 100, 2))) + " %", True, triadic_2)
         VOL_RECT = VOL_TEXT.get_rect(center=(screen_width//2, 250))
         SCREEN.blit(VOL_TEXT, VOL_RECT)
 
-        #Hint
+        # --- (ส่วน Hint (Fast Mode) เหมือนเดิม) ---
         OPTIONS_FAST = get_font(45, 1).render(f"Hint : {ishint}", True, triadic_2)
         OPTIONS_FAST_RECT = OPTIONS_FAST.get_rect(center=(screen_width//2, 325))
         SCREEN.blit(OPTIONS_FAST, OPTIONS_FAST_RECT)
-
-        OPTIONS_FAST = Button(image=None, pos=(screen_width//2, 325),
+        OPTIONS_FAST_BTN = Button(image=None, pos=(screen_width//2, 325),
                             text_input = f"Hint : {ishint}", font=get_font(45, 1), base_color=triadic_2, hovering_color=triadic_3)
         
-        # ปุ่มเพิ่ม/ลดเวลาตอบ
+        # --- (ส่วน Answer Time เหมือนเดิม) ---
         OPTIONS_TEXT_ANSWER_TIME = get_font(45, 1).render("Answer Time", True, triadic_2)
         OPTIONS_RECT_ANSWER_TIME = OPTIONS_TEXT_ANSWER_TIME.get_rect(center=(screen_width//2, 400))
         SCREEN.blit(OPTIONS_TEXT_ANSWER_TIME, OPTIONS_RECT_ANSWER_TIME)
-
         PLUS_BUTTON_ANSWER_TIME = Button(image=None, pos=(screen_width//2 + 150, 450),
                             text_input="+", font=get_font(75, 1), base_color=(200,180,255), hovering_color=(255,255,255))
         MINUS_BUTTON_ANSWER_TIME = Button(image=None, pos=(screen_width//2 - 150, 450),
                             text_input="-", font=get_font(75, 1), base_color=(200,180,255), hovering_color=(255,255,255))
-        
         VOL_TEXT_ANSWER_TIME = get_font(55, 1).render(str(int(round(answer_time, 2))) + " Second", True, triadic_2)
         VOL_RECT_ANSWER_TIME = VOL_TEXT_ANSWER_TIME.get_rect(center=(screen_width//2, 450))
         SCREEN.blit(VOL_TEXT_ANSWER_TIME, VOL_RECT_ANSWER_TIME)
-        
-        #ย้อน
+
+        font_toggle_text = "Font: Gravity (Pixel)" if use_gravity_font else "Font: Pixel (Easy To Read)"
+        FONT_TOGGLE_BTN = Button(image=None, pos=(screen_width//2, 525),
+                            text_input = font_toggle_text, font=get_font(45, 1), 
+                            base_color=triadic_2, hovering_color=triadic_3)
+
         OPTIONS_BACK = Button(image=None, pos=(screen_width//2, 940),
                             text_input="BACK", font=get_font(75, 1), base_color=triadic_2, hovering_color=triadic_3)
 
-        for button in [PLUS_BUTTON, MINUS_BUTTON, OPTIONS_BACK, OPTIONS_FAST, PLUS_BUTTON_ANSWER_TIME, MINUS_BUTTON_ANSWER_TIME]:
+        for button in [PLUS_BUTTON, MINUS_BUTTON, OPTIONS_BACK, OPTIONS_FAST_BTN, PLUS_BUTTON_ANSWER_TIME, MINUS_BUTTON_ANSWER_TIME, FONT_TOGGLE_BTN]:
             button.changeColor(OPTIONS_MOUSE_POS)
             button.update(SCREEN)
 
@@ -2291,10 +2342,13 @@ def options():
                 if OPTIONS_BACK.checkForInput(OPTIONS_MOUSE_POS):
                     sfx_func("SFX/Click.mp3")
                     transition_to(main_menu, "Music/002. Start Menu.mp3")
-                if OPTIONS_FAST.checkForInput(OPTIONS_MOUSE_POS):
+                if OPTIONS_FAST_BTN.checkForInput(OPTIONS_MOUSE_POS):
                     sfx_func("SFX/Click.mp3")
                     if ishint: ishint = False
                     else: ishint = True
+                if FONT_TOGGLE_BTN.checkForInput(OPTIONS_MOUSE_POS):
+                    sfx_func("SFX/Click.mp3")
+                    use_gravity_font = not use_gravity_font
                 if PLUS_BUTTON.checkForInput(OPTIONS_MOUSE_POS) and not intro_time > 3:
                     sfx_func("SFX/Click.mp3")
                     if event.button in (1, 4):
@@ -2309,7 +2363,6 @@ def options():
                     else:
                         background_music_volume = min(1, background_music_volume + 0.1)
                     pygame.mixer.music.set_volume(background_music_volume)
-
                 if PLUS_BUTTON_ANSWER_TIME.checkForInput(OPTIONS_MOUSE_POS) and not intro_time > 3:
                     sfx_func("SFX/Click.mp3")
                     if event.button in (1, 4):
