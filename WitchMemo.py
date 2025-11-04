@@ -1,6 +1,5 @@
 """Witch Memo Game Script"""
 import pygame, sys, random, socket, getpass, json, os, time
-from button import Button
 from math import floor # เพิ่ม math.floor สำหรับการคำนวณเวลาบอส
 
 pygame.init()
@@ -11,10 +10,7 @@ SCREEN = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Witch's Memo")
 
 def load_image_asset(path, size=None):
-    """
-    ฟังก์ชันช่วยโหลดรูปภาพพร้อมปรับขนาด และจัดการหากไฟล์ไม่เจอ
-    (ย้ายมาไว้บนๆ เพื่อให้ตัวแปร BG ใช้ได้)
-    """
+
     try:
         img = pygame.image.load(path).convert_alpha()
         if size:
@@ -327,6 +323,36 @@ def load_deck_file(deck_name_without_json):
     except Exception as e:
         print(f"Load deck error: {e}")
         return {"style": "Image/cards/card.png", "cards": []}
+    
+class Button():
+    def __init__(self, image, pos, text_input, font, base_color, hovering_color):
+        self.image = image
+        self.x_pos = pos[0]
+        self.y_pos = pos[1]
+        self.font = font
+        self.base_color, self.hovering_color, self.text_input = base_color, hovering_color, text_input
+        self.text = self.font.render(self.text_input, True, self.base_color)
+        if self.image is None:
+            self.image = self.text
+        self.rect = self.image.get_rect(center = (self.x_pos, self.y_pos))
+        self.text_rect = self.text.get_rect(center = (self.x_pos, self.y_pos))
+
+    def update(self, screen):
+        if self.image is not None:
+            screen.blit(self.image, self.rect)
+        screen.blit(self.text, self.text_rect)
+
+    def checkForInput(self, position):
+        if position[0] in range(self.rect.left, self.rect.right) and position[1] in range(self.rect.top, self.rect.bottom):
+            return True
+        return False
+    
+    def changeColor(self, position):
+        if self.image is not None:
+            self.text = self.font.render(self.text_input, True, self.hovering_color)
+        else:
+            self.text = self.font.render(self.text_input, True, self.base_color)
+
     
 # --- [ คลาสสำหรับ Particle Effect ] ---
 
@@ -2388,11 +2414,11 @@ def main_menu():
 
         MENU_MOUSE_POS = pygame.mouse.get_pos()
         MENU_RECT = MENU_TEXT.get_rect(center=(screen_width//2, 150))
-        PLAY_BUTTON = Button(image=pygame.image.load("Image/Play Rect.png"), pos=(screen_width//2, 350), 
+        PLAY_BUTTON = Button(None, pos=(screen_width//2, 350), 
                             text_input="PLAY", font=get_font(75, 1), base_color="#d7fcd4", hovering_color = triadic_3)
-        OPTIONS_BUTTON = Button(image=pygame.image.load("Image/Options Rect.png"), pos=(screen_width//2, 500), 
+        OPTIONS_BUTTON = Button(None, pos=(screen_width//2, 500), 
                             text_input="OPTIONS", font=get_font(75, 1), base_color="#d7fcd4", hovering_color = triadic_3)
-        QUIT_BUTTON = Button(image=pygame.image.load("Image/Quit Rect.png"), pos=(screen_width//2, 650), 
+        QUIT_BUTTON = Button(None, pos=(screen_width//2, 650), 
                             text_input="QUIT", font=get_font(75, 1), base_color="#d7fcd4", hovering_color = triadic_3)
         
         witch = pygame.image.load("Image/MC Witch.png")
