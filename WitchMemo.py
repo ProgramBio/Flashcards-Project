@@ -1337,7 +1337,10 @@ def choose_stage_and_start(deck_name):
     if not available_stages:
         while True:
             MOUSE_POS = pygame.mouse.get_pos()
-            SCREEN.fill(basecolor)
+            # SCREEN.fill(basecolor)
+            nec = pygame.image.load("Image/Background/not-enough-card.png")
+            SCREEN.blit(nec, (0, 0))
+
             err_text = get_font(40, 2).render(f"Deck '{deck_name}' needs at least 5 cards to play.", True, (255, 100, 100))
             SCREEN.blit(err_text, err_text.get_rect(center=(screen_width//2, screen_height//2 - 50)))
 
