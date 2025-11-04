@@ -2404,6 +2404,8 @@ def options():
         pygame.display.update()
 
 def main_menu():
+    witch_pos = (screen_width//2 + 450, screen_height//2 + 180)
+    flip = False
     while True:
         if intro_time > 3:
             screen_color()
@@ -2414,20 +2416,23 @@ def main_menu():
 
         MENU_MOUSE_POS = pygame.mouse.get_pos()
         MENU_RECT = MENU_TEXT.get_rect(center=(screen_width//2, 150))
-        PLAY_BUTTON = Button(None, pos=(screen_width//2, 350), 
+        PLAY_BUTTON = Button(image=pygame.image.load("Image/buttonn.png"), pos=(screen_width//2, 350), 
                             text_input="PLAY", font=get_font(75, 1), base_color="#d7fcd4", hovering_color = triadic_3)
-        OPTIONS_BUTTON = Button(None, pos=(screen_width//2, 500), 
+        OPTIONS_BUTTON = Button(image=pygame.image.load("Image/buttonnn.png"), pos=(screen_width//2, 500), 
                             text_input="OPTIONS", font=get_font(75, 1), base_color="#d7fcd4", hovering_color = triadic_3)
-        QUIT_BUTTON = Button(None, pos=(screen_width//2, 650), 
+        QUIT_BUTTON = Button(image=pygame.image.load("Image/buttonn.png"), pos=(screen_width//2, 650), 
                             text_input="QUIT", font=get_font(75, 1), base_color="#d7fcd4", hovering_color = triadic_3)
         
-        witch = pygame.image.load("Image/MC Witch.png")
-        witch = pygame.transform.scale(witch, (300, 300))
-        witch_rect = witch.get_rect(center=(screen_width//2 + 450, screen_height//2))
+        witch_img = pygame.image.load("Image/MC Witch.png")
+        witch_img = pygame.transform.scale(witch_img, (200, 200))
+        if flip:
+            witch_img = pygame.transform.flip(witch_img, True, False)
+
+        WITCH = Button(image=witch_img, pos=witch_pos, 
+                            text_input=None, font=get_font(75, 1), base_color="#d7fcd4", hovering_color = triadic_3)
 
         SCREEN.blit(MENU_TEXT, MENU_RECT)
-        SCREEN.blit(witch, witch_rect)
-        for button in [PLAY_BUTTON, OPTIONS_BUTTON, QUIT_BUTTON]:
+        for button in [PLAY_BUTTON, OPTIONS_BUTTON, QUIT_BUTTON, WITCH]:
             button.changeColor(MENU_MOUSE_POS)
             button.update(SCREEN)
             
@@ -2437,6 +2442,14 @@ def main_menu():
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
+                    if WITCH.checkForInput(MENU_MOUSE_POS):
+                        witch_pos = (random.randint(200, screen_width - 200), random.randint(200, screen_height - 200))
+                        isflip = random.randint(1,2)
+                        if isflip == 1:
+                            flip = True
+                        else:
+                            flip = False
+                        sfx_func("SFX/mambo.mp3")
                     if PLAY_BUTTON.checkForInput(MENU_MOUSE_POS):
                         sfx_func("SFX/Click.mp3")
                         transition_to(select_mode, "Music/003. Your Best Friend.mp3")
