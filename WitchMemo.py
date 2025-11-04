@@ -1265,14 +1265,21 @@ def show_battle_result(result, deck_name):
     while True:
         MOUSE_POS = pygame.mouse.get_pos()
         if not intro_time > 3:
-            SCREEN.fill(basecolor if result == "VICTORY" else (50, 0, 0))
+            if result == "VICTORY":
+                vw_bg = pygame.image.load("Image/Background/Victory_bg.png")
+                SCREEN.blit(vw_bg, (0, 0))
+            else:
+                vw_bg = pygame.image.load("Image/Background/Defeat_bg.png")
+                SCREEN.blit(vw_bg, (0, 0))
+            # SCREEN.fill(basecolor if result == "VICTORY" else (50, 0, 0))
             result_text_surf = get_font(100, 1).render(result, True, triadic_3 if result == "VICTORY" else (255, 50, 50))
         else:
-            screen_color()
+            vw_bg = pygame.image.load("Image/Background/Victory_bg.png")
+            SCREEN.blit(vw_bg, (0, 0))
             result_text_surf = get_font(100, 1).render(result, True, "red" if result == "VICTORY" else "red")
         SCREEN.blit(result_text_surf, result_text_surf.get_rect(center=(screen_width//2, screen_height//2 - 100)))
 
-        BACK_BUTTON = Button(None, (screen_width//2, screen_height//2 + 100), "BACK", get_font(75, 1), triadic_2, triadic_3)
+        BACK_BUTTON = Button(image=pygame.image.load("Image/buttonn.png"), pos=(screen_width//2, screen_height//2 + 100), text_input="BACK", font=get_font(75, 1), base_color=triadic_2, hovering_color=triadic_3)
         BACK_BUTTON.changeColor(MOUSE_POS)
         BACK_BUTTON.update(SCREEN)
 
