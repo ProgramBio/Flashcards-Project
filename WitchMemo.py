@@ -1037,9 +1037,7 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
             
             if not queue: 
                 if not wrong_cards: 
-                    # [FIX] ตรวจสอบเงื่อนไขชนะ/แพ้ ที่นี่ (เมื่อการ์ดหมด)
-                    if (is_lost_memory_boss and monster_hp[0] >= max_monster_hp) or \
-                       (not is_lost_memory_boss and all(mhp <= 0 for mhp in monster_hp)):
+                    if all(mhp <= 0 for mhp in monster_hp):
                         result = "VICTORY"
                     else:
                         log("Cards finished, but monsters remain...", (255, 100, 100))
@@ -1287,7 +1285,7 @@ def show_battle_result(result, deck_name):
         sfx_func("SFX/victory.mp3") if result == "VICTORY" else sfx_func("SFX/fail.mp3")
     else:
         sfx_func("SFX/OMG Laugh.mp3")
-    
+
     while True:
         MOUSE_POS = pygame.mouse.get_pos()
         if not intro_time > 3:
@@ -1339,12 +1337,7 @@ def choose_stage_and_start(deck_name):
     if not available_stages:
         while True:
             MOUSE_POS = pygame.mouse.get_pos()
-            # [แก้ไข] ใช้ BG ที่โหลดไว้ล่วงหน้า
-            if intro_time > 3:
-                screen_color()
-            else:
-                SCREEN.blit(BG_NOT_ENOUGH_CARD, (0, 0))
-                
+            SCREEN.fill(basecolor)
             err_text = get_font(40, 2).render(f"Deck '{deck_name}' needs at least 5 cards to play.", True, (255, 100, 100))
             SCREEN.blit(err_text, err_text.get_rect(center=(screen_width//2, screen_height//2 - 50)))
 
