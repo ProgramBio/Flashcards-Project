@@ -62,7 +62,7 @@ for i in range(3): #แปลงรหัสสีตาม Triadic Theory
     if triadic_3[i] > 255:
         triadic_3[i] -= 255
 
-intro_time = 0
+intro_time = 1
 
 current_music = None
 def background_music(path, volume, loop):
@@ -708,6 +708,12 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
     lost_soul_spawn_timer = 0 # ตัวนับเวลาเกิด
     BOX_SPAWN_RATE = 10 # (ความเร็วในการเกิดกล่องใหม่: ยิ่งน้อยยิ่งเยอะ)
 
+    witch_x_left = screen_width//2 - 710
+    witch_y_center = screen_height//2
+    WITCH_BUTTON = Button(image=witch_img, pos=(witch_x_left + witch_img.get_width()//2, witch_y_center), 
+                        text_input=None, font=get_font(1, 1), 
+                        base_color="White", hovering_color="White")
+
     running = True
     result = "DEFEAT" 
     
@@ -845,6 +851,8 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                     transition_to(lambda: show_battle_result("DEFEAT", deck_name), "Music/011. Determination.mp3")
                     return
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if WITCH_BUTTON.checkForInput(MOUSE_POS):
+                    sfx_func(sfx)
                 if quit_battle_btn.checkForInput(MOUSE_POS):
                     sfx_func("SFX/Click.mp3")
                     if pygame.mixer.music.get_busy() == 0: 
@@ -1061,13 +1069,11 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                 SCREEN.blit(hp_surf, hp_rect)
                 
         if witch_img:
-            witch_x_left = screen_width//2 - 710
-            witch_y_center = screen_height//2
-            witch_rect = witch_img.get_rect(left=witch_x_left, centery=witch_y_center)
-            SCREEN.blit(witch_img, witch_rect)
+            WITCH_BUTTON.changeColor(MOUSE_POS)
+            WITCH_BUTTON.update(SCREEN)
             
             if witch_flash_timer > 0:
-                SCREEN.blit(red_overlay_witch, witch_rect.topleft)
+                SCREEN.blit(red_overlay_witch, WITCH_BUTTON.rect.topleft)
 
         if current_card_obj:
             current_card_obj.draw(SCREEN)
