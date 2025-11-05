@@ -526,9 +526,14 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
         skill_stop_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Freeze.png", (100, 100))
         skill_ginger_img = load_image_asset("Image/Icon (buff, health-bar)/Icon-buff/Gingerbread (eat 2 gain more hearts).PNG", (100, 100))
         
-        witch_img = load_image_asset("Image/MC Witch.png", (300, 300))
+        if intro_time > 3:
+            witch_img = load_image_asset("Image/Monster/Boss/lost_memory.png", (300, 300))
+            sfx = "SFX/OMG Laugh.mp3"
+        else:
+            witch_img = load_image_asset("Image/MC Witch.png", (300, 300))
+            sfx = "SFX/mambo.mp3"
         witch_img = pygame.transform.flip(witch_img, True, False)
-        
+
         red_overlay_witch = pygame.Surface(witch_img.get_size(), pygame.SRCALPHA)
         red_overlay_witch.fill((255, 0, 0, 30)) # สีแดงจางๆ
 
@@ -2288,9 +2293,13 @@ def main_menu():
         if intro_time > 3:
             screen_color()
             MENU_TEXT = pygame.font.Font("Font/PixelMedium.ttf", 75).render(user_name +" " + computer_name +" ?", True, "red")
+            witch_img = load_image_asset("Image/Monster/Boss/lost_memory.png", (300, 300))
+            sfx = "SFX/OMG Laugh.mp3"
         else:
             SCREEN.blit(BG, (0, 0))
             MENU_TEXT = get_font(100, 1).render("Witch's Memo", True, triadic_2)
+            witch_img = load_image_asset("Image/MC Witch.png", (300, 300))
+            sfx = "SFX/mambo.mp3"
 
         MENU_MOUSE_POS = pygame.mouse.get_pos()
         MENU_RECT = MENU_TEXT.get_rect(center=(screen_width//2, 150))
@@ -2301,7 +2310,6 @@ def main_menu():
         QUIT_BUTTON = Button(image=pygame.image.load("Image/buttonn.png"), pos=(screen_width//2, 650), 
                             text_input="QUIT", font=get_font(75, 1), base_color="#d7fcd4", hovering_color = triadic_3)
         
-        witch_img = pygame.image.load("Image/MC Witch.png")
         witch_img = pygame.transform.scale(witch_img, (200, 200))
         if flip:
             witch_img = pygame.transform.flip(witch_img, True, False)
@@ -2327,7 +2335,7 @@ def main_menu():
                             flip = True
                         else:
                             flip = False
-                        sfx_func("SFX/mambo.mp3")
+                        sfx_func(sfx)
                     if PLAY_BUTTON.checkForInput(MENU_MOUSE_POS):
                         sfx_func("SFX/Click.mp3")
                         transition_to(select_mode, "Music/003. Your Best Friend.mp3")
