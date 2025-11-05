@@ -11,6 +11,20 @@ icon = pygame.image.load("Image/star.png")
 pygame.display.set_caption("Witch's Memo")
 pygame.display.set_icon(icon)
 
+basecolor = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) #สุ่มสีเริ่มต้น
+triadic_2 = [basecolor[0] + 85, basecolor[1] + 85, basecolor[2] + 85] #การทำสีที่สองของ Triadic Theory
+triadic_3 = [triadic_2[0] + 85, triadic_2[1] + 85, triadic_2[2] + 85] #การทำสีที่สามของ Triadic Theory
+#pygame.mouse.set_visible(False) คงไม่ได้ใช้แล้วแต่เก็บไว้ก่อน ทำให้ไม่เห็นเมาส์
+for i in range(3): #แปลงรหัสสีตาม Triadic Theory
+    if triadic_2[i] > 255:
+        triadic_2[i] -= 255
+    if triadic_3[i] > 255:
+        triadic_3[i] -= 255
+
+intro_time = 1
+computer_name = socket.gethostname()
+user_name = getpass.getuser()
+
 def load_image_asset(path, size=None):
     """ทำให้ภาพโหลดน้อยลง"""
     try:
@@ -71,23 +85,8 @@ ishint = False #Fast mode
 answer_time = 5 #เริ่มที่ 5 วิ
 use_gravity_font = True
 
-computer_name = socket.gethostname()
-user_name = getpass.getuser()
-
 DECK_DIR = "decks"
 os.makedirs(DECK_DIR, exist_ok=True)
-
-basecolor = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) #สุ่มสีเริ่มต้น
-triadic_2 = [basecolor[0] + 85, basecolor[1] + 85, basecolor[2] + 85] #การทำสีที่สองของ Triadic Theory
-triadic_3 = [triadic_2[0] + 85, triadic_2[1] + 85, triadic_2[2] + 85] #การทำสีที่สามของ Triadic Theory
-#pygame.mouse.set_visible(False) คงไม่ได้ใช้แล้วแต่เก็บไว้ก่อน ทำให้ไม่เห็นเมาส์
-for i in range(3): #แปลงรหัสสีตาม Triadic Theory
-    if triadic_2[i] > 255:
-        triadic_2[i] -= 255
-    if triadic_3[i] > 255:
-        triadic_3[i] -= 255
-
-intro_time = 0
 
 current_music = None
 def background_music(path, volume, loop):
@@ -760,6 +759,12 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
     lost_soul_spawn_timer = 0 # ตัวนับเวลาเกิด
     BOX_SPAWN_RATE = 10 # (ความเร็วในการเกิดกล่องใหม่: ยิ่งน้อยยิ่งเยอะ)
 
+    witch_x_left = screen_width//2 - 710
+    witch_y_center = screen_height//2
+    WITCH_BUTTON = Button(image=witch_img, pos=(witch_x_left + witch_img.get_width()//2, witch_y_center), 
+                        text_input=None, font=get_font(1, 1), 
+                        base_color="White", hovering_color="White")
+
     running = True
     result = "DEFEAT" 
     
@@ -911,6 +916,8 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                     transition_to(lambda: show_battle_result("DEFEAT", deck_name), "Music/011. Determination.mp3")
                     return
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if WITCH_BUTTON.checkForInput(MOUSE_POS):
+                    sfx_func(sfx)
                 if quit_battle_btn.checkForInput(MOUSE_POS):
                     sfx_func("SFX/Click.mp3")
                     if pygame.mixer.music.get_busy() == 0: 
@@ -932,7 +939,7 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                     if skill_heal_btn.checkForInput(MOUSE_POS):
                         if skill_points >= skill_costs[skill_heal_btn]:
                             if max_hp == hp:
-                                sfx_func("SFX/mambo.mp3")
+                                sfx_func(sfx)
                                 log("You HP is max!", "#93BFC7")
                             else:
                                 sfx_func("SFX/heal.mp3")
@@ -942,13 +949,13 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                                 sfx_func("SFX/Click.mp3")
                                 skill_used_this_turn = True 
                         else:
-                            sfx_func("SFX/mambo.mp3")
+                            sfx_func(sfx)
                             log("Not enough SP!", "#BF092F")
                             
                     elif skill_shield_btn.checkForInput(MOUSE_POS):
                         if skill_points >= skill_costs[skill_shield_btn]:
                             if shield_active:
-                                sfx_func("SFX/mambo.mp3")
+                                sfx_func(sfx)
                                 log("Shield Already Activated!", "#93BFC7")
                             else:
                                 sfx_func("SFX/bat_hit.mp3")
@@ -958,13 +965,13 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                                 sfx_func("SFX/Click.mp3")
                                 skill_used_this_turn = True
                         else:
-                            sfx_func("SFX/mambo.mp3")
+                            sfx_func(sfx)
                             log("Not enough SP!", "#BF092F")
 
                     elif skill_stop_btn.checkForInput(MOUSE_POS):
                         if skill_points >= skill_costs[skill_stop_btn]:
                             if time_stopped_for_card:
-                                sfx_func("SFX/mambo.mp3")
+                                sfx_func(sfx)
                                 log("Time Stop Already Activated!, But How", "#93BFC7")
                             else:
                                 sfx_func("SFX/time-stop.mp3")
@@ -975,7 +982,7 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                                 skill_used_this_turn = True 
                                 pygame.mixer.music.pause()
                         else:
-                            sfx_func("SFX/mambo.mp3")
+                            sfx_func(sfx)
                             log("Not enough SP!", "#BF092F")
 
                     elif skill_maxhp_btn.checkForInput(MOUSE_POS):
@@ -996,7 +1003,7 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                                 sfx_func("SFX/Click.mp3")
                                 skill_used_this_turn = True 
                         else:
-                            sfx_func("SFX/mambo.mp3")
+                            sfx_func(sfx)
                             log("Not enough SP!", "#BF092F")
 
         #Game State Logic
@@ -2402,9 +2409,13 @@ def main_menu():
         if intro_time > 3:
             screen_color()
             MENU_TEXT = pygame.font.Font("Font/PixelMedium.ttf", 75).render(user_name +" " + computer_name +" ?", True, "red")
+            witch_img = load_image_asset("Image/Monster/Boss/lost_memory.png", (300, 300))
+            sfx = "SFX/OMG Laugh.mp3"
         else:
             SCREEN.blit(BG, (0, 0))
             MENU_TEXT = get_font(100, 1).render("Witch's Memo", True, triadic_2)
+            witch_img = load_image_asset("Image/MC Witch.png", (300, 300))
+            sfx = "SFX/mambo.mp3"
 
         MENU_MOUSE_POS = pygame.mouse.get_pos()
         MENU_RECT = MENU_TEXT.get_rect(center=(screen_width//2, 150))
@@ -2443,7 +2454,7 @@ def main_menu():
                             flip = True
                         else:
                             flip = False
-                        sfx_func("SFX/mambo.mp3")
+                        sfx_func(sfx)
                     if PLAY_BUTTON.checkForInput(MENU_MOUSE_POS):
                         sfx_func("SFX/Click.mp3")
                         transition_to(select_mode, "Music/003. Your Best Friend.mp3")
