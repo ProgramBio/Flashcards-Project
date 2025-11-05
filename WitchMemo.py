@@ -7,7 +7,9 @@ pygame.mixer.init()
 
 screen_width, screen_height = 1920, 1080
 SCREEN = pygame.display.set_mode((screen_width, screen_height))
+icon = pygame.image.load("Image/star.png")
 pygame.display.set_caption("Witch's Memo")
+pygame.display.set_icon(icon)
 
 def load_image_asset(path, size=None):
     """ทำให้ภาพโหลดน้อยลง"""
@@ -25,8 +27,8 @@ def load_image_asset(path, size=None):
         return fallback
 
 # --- โหลด BG หลัก ---
-BG = load_image_asset("Image/Background/forestbackground.jpg", (screen_width, screen_height))
-BG_SELECT_MODE = load_image_asset("Image/Background/selectmode_bg.png", (screen_width, screen_height))
+BG = load_image_asset("Image/Background/caveentrance.png", (screen_width, screen_height))
+BG_SELECT_MODE = load_image_asset("Image/Background/deep_darkforest.png", (screen_width, screen_height))
 BG_EDIT_DECK_3 = load_image_asset("Image/Background/editing_deck3.png", (screen_width, screen_height))
 BG_PREPARE_DECK = load_image_asset("Image/Background/prepare_deck.jpg", (screen_width, screen_height))
 BG_CRAFTING_WITCH = load_image_asset("Image/Background/crafting-witch.png", (screen_width, screen_height))
