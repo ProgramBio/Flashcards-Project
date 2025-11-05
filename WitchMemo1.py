@@ -671,7 +671,6 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                 filename, sprite_img = random.choice(active_cache)
 
             is_shroom_boss = "shroom_boss" in filename.lower()
-            is_wild_deer_boss = "wild_deer" in filename.lower()
 
             # [LOST_MEMORY]
             if is_lost_memory_boss:
@@ -690,28 +689,24 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
             elif is_lost_memory_boss:
                 monster_sprite_size = (300, 300)
                 sprite_img_scaled = pygame.transform.scale(sprite_img, monster_sprite_size)
-            elif is_wild_deer_boss:
-                monster_sprite_size = (462, 600)
-                sprite_img_scaled = WILD_BOSS_ANIMATION
             else:
                 monster_sprite_size = default_monster_size
                 sprite_img_scaled = pygame.transform.scale(sprite_img, monster_sprite_size)
+
+            sprite_img_scaled = pygame.transform.scale(sprite_img, monster_sprite_size)
             
-            sprite_rect = sprite_img_scaled.get_rect(center=(monster_x_pos, positions_y[i])) if not is_shroom_boss and not is_wild_deer_boss else SHROOM_BOSS_ANIMATION[0].get_rect(center=(monster_x_pos, positions_y[i]))
+            sprite_rect = sprite_img_scaled.get_rect(center=(monster_x_pos, positions_y[i]))
             
             assigned_monster_sprites.append(sprite_img_scaled)
             monster_sprite_rects.append(sprite_rect)
 
-            if is_shroom_boss or is_wild_deer_boss:
-                # Use the size from our global variable
+            if is_shroom_boss:
                 overlay_surf = pygame.Surface(monster_sprite_size, pygame.SRCALPHA)
             else:
-                # Use the size from the static scaled image
                 overlay_surf = pygame.Surface(sprite_img_scaled.get_size(), pygame.SRCALPHA)
             
             overlay_surf.fill((255, 0, 0, 30))
             monster_red_overlays.append(overlay_surf)
-
 
     selected_battle_bg = random_battle_bg()
 
@@ -724,7 +719,7 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
     
     particle_system = ParticleSystem()
 
-    # --- Boss Animation Timers ---
+    # Boss Animation Timers
     monster_anim_indices = [0] * monsters_count
     monster_anim_last_updates = [pygame.time.get_ticks()] * monsters_count
     monster_anim_speed = 120
@@ -880,10 +875,7 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
         for i in range(monsters_count): # Monster
             if now - monster_anim_last_updates[i] > monster_anim_speed:
                 monster_anim_last_updates[i] = now
-                if is_shroom_boss :
-                    monster_anim_indices[i] = (monster_anim_indices[i] + 1) % SHROOM_BOSS_FRAME_COUNT
-                elif is_wild_deer_boss:
-                    monster_anim_indices[i] = (monster_anim_indices[i] + 1) % WILD_BOSS_FRAME_COUNT
+                monster_anim_indices[i] = (monster_anim_indices[i] + 1) % SHROOM_BOSS_FRAME_COUNT
 
         MOUSE_POS = pygame.mouse.get_pos()
         
@@ -1099,11 +1091,6 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
 
         
         hp_bar_font = get_font(20, 1) # Font สำหรับ HP มอนสเตอร์
-        # for i in range(monsters_count):
-        #     if (is_lost_memory_boss) or (not is_lost_memory_boss and monster_hp[i] > 0):
-        #         sprite_img = assigned_monster_sprites[i]
-        #         sprite_rect = monster_sprite_rects[i]
-        #         SCREEN.blit(sprite_img, sprite_rect)
 
         for i in range(monsters_count):
             if (is_lost_memory_boss) or (not is_lost_memory_boss and monster_hp[i] > 0):
@@ -1111,17 +1098,11 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                 sprite_or_list = assigned_monster_sprites[i]
                 sprite_rect = monster_sprite_rects[i]
 
-                # This is your animation drawing logic! It looks correct.
-                # Now that assigned_monster_sprites[i] will be a list for the shroom boss,
-                # this code will correctly run.
                 if isinstance(sprite_or_list, list):
-                    # It's animated! Get the current frame.
+                    # Animate Monster
                     frame_index = monster_anim_indices[i]
-                    if frame_index >= len(sprite_or_list):
-                        frame_index = 0
                     SCREEN.blit(sprite_or_list[frame_index], sprite_rect)
                 else:
-                    # It's static. Just draw it.
                     SCREEN.blit(sprite_or_list, sprite_rect)
 
 
@@ -1145,21 +1126,11 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                 hp_surf = hp_bar_font.render(hp_text_mon, True, "white")
                 hp_rect = hp_surf.get_rect(center=(sprite_rect.centerx, bar_y - 15)) # (เหนือ Bar 15px)
                 SCREEN.blit(hp_surf, hp_rect)
-                
-        # if witch_img:
-        #     witch_x_left = screen_width//2 - 710
-        #     witch_y_center = screen_height//2
-        #     witch_rect = witch_img.get_rect(left=witch_x_left, centery=witch_y_center)
-        #     SCREEN.blit(witch_img, witch_rect)
-            
-        #     if witch_flash_timer > 0:
-        #         SCREEN.blit(red_overlay_witch, witch_rect.topleft)
 
-        if witch_frames_left: # Check if the animation frames loaded
+        if witch_frames_left:
             witch_x_left = screen_width//2 - 710
             witch_y_center = screen_height//2
-            
-            # Get the current frame from our animation list
+
             current_witch_img = witch_frames_left[witch_anim_index]
             
             witch_rect = current_witch_img.get_rect(left=witch_x_left, centery=witch_y_center)
@@ -1167,7 +1138,6 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
             
             if witch_flash_timer > 0:
                 SCREEN.blit(red_overlay_witch, witch_rect.topleft)
-        # End
 
         if current_card_obj:
             current_card_obj.draw(SCREEN)
@@ -2387,14 +2357,12 @@ def options():
 
 def main_menu():
     """หน้าหลัก"""
-
     witch_frames = load_animation_frames("Image/MC_spritesheet.png", 12, 68, 87, (204, 261))
     witch_frames_flipped = [pygame.transform.flip(frame, True, False) for frame in witch_frames]
-
+    
     witch_anim_index = 0
     witch_anim_last_update = pygame.time.get_ticks()
-    witch_anim_speed = 100 # ms
-
+    witch_anim_speed = 100
 
     witch_pos = (screen_width//2 + 450, screen_height//2 + 180)
     flip = False
@@ -2510,7 +2478,7 @@ MONSTER_SPRITE_CACHE = load_sprite_cache_from_folder("Image/Monster/Gigi", (100,
 BOSS_SPRITE_CACHE = load_sprite_cache_from_folder("Image/Monster/Boss", (255, 0, 0))
 SHROOM_BOSS_ANIMATION = load_animation_frames("Image/Monster/Boss/shroom_boss_spritesheet.png", 10, 110, 204, (330, 612))
 SHROOM_BOSS_FRAME_COUNT = 10
-WILD_BOSS_ANIMATION = load_animation_frames("Image/Monster/Boss/Wild_Deer_spritesheet.png", 14, 156, 200, (462, 600))
+WILD_BOSS_ANIMATION = load_animation_frames("Image/Monster/Boss/Wild_Deer_spritesheet.png", 14, 154, 200, (462, 600))
 WILD_BOSS_FRAME_COUNT = 14
 
 intro()
