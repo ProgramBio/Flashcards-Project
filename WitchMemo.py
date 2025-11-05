@@ -11,6 +11,20 @@ icon = pygame.image.load("Image/star.png")
 pygame.display.set_caption("Witch's Memo")
 pygame.display.set_icon(icon)
 
+basecolor = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) #สุ่มสีเริ่มต้น
+triadic_2 = [basecolor[0] + 85, basecolor[1] + 85, basecolor[2] + 85] #การทำสีที่สองของ Triadic Theory
+triadic_3 = [triadic_2[0] + 85, triadic_2[1] + 85, triadic_2[2] + 85] #การทำสีที่สามของ Triadic Theory
+#pygame.mouse.set_visible(False) คงไม่ได้ใช้แล้วแต่เก็บไว้ก่อน ทำให้ไม่เห็นเมาส์
+for i in range(3): #แปลงรหัสสีตาม Triadic Theory
+    if triadic_2[i] > 255:
+        triadic_2[i] -= 255
+    if triadic_3[i] > 255:
+        triadic_3[i] -= 255
+
+intro_time = 1
+computer_name = socket.gethostname()
+user_name = getpass.getuser()
+
 def load_image_asset(path, size=None):
     """ทำให้ภาพโหลดน้อยลง"""
     try:
@@ -46,23 +60,8 @@ ishint = False #Fast mode
 answer_time = 5 #เริ่มที่ 5 วิ
 use_gravity_font = True
 
-computer_name = socket.gethostname()
-user_name = getpass.getuser()
-
 DECK_DIR = "decks"
 os.makedirs(DECK_DIR, exist_ok=True)
-
-basecolor = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) #สุ่มสีเริ่มต้น
-triadic_2 = [basecolor[0] + 85, basecolor[1] + 85, basecolor[2] + 85] #การทำสีที่สองของ Triadic Theory
-triadic_3 = [triadic_2[0] + 85, triadic_2[1] + 85, triadic_2[2] + 85] #การทำสีที่สามของ Triadic Theory
-#pygame.mouse.set_visible(False) คงไม่ได้ใช้แล้วแต่เก็บไว้ก่อน ทำให้ไม่เห็นเมาส์
-for i in range(3): #แปลงรหัสสีตาม Triadic Theory
-    if triadic_2[i] > 255:
-        triadic_2[i] -= 255
-    if triadic_3[i] > 255:
-        triadic_3[i] -= 255
-
-intro_time = 1
 
 current_music = None
 def background_music(path, volume, loop):
@@ -874,7 +873,7 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                     if skill_heal_btn.checkForInput(MOUSE_POS):
                         if skill_points >= skill_costs[skill_heal_btn]:
                             if max_hp == hp:
-                                sfx_func("SFX/mambo.mp3")
+                                sfx_func(sfx)
                                 log("You HP is max!", "#93BFC7")
                             else:
                                 sfx_func("SFX/heal.mp3")
@@ -884,13 +883,13 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                                 sfx_func("SFX/Click.mp3")
                                 skill_used_this_turn = True 
                         else:
-                            sfx_func("SFX/mambo.mp3")
+                            sfx_func(sfx)
                             log("Not enough SP!", "#BF092F")
                             
                     elif skill_shield_btn.checkForInput(MOUSE_POS):
                         if skill_points >= skill_costs[skill_shield_btn]:
                             if shield_active:
-                                sfx_func("SFX/mambo.mp3")
+                                sfx_func(sfx)
                                 log("Shield Already Activated!", "#93BFC7")
                             else:
                                 sfx_func("SFX/bat_hit.mp3")
@@ -900,13 +899,13 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                                 sfx_func("SFX/Click.mp3")
                                 skill_used_this_turn = True
                         else:
-                            sfx_func("SFX/mambo.mp3")
+                            sfx_func(sfx)
                             log("Not enough SP!", "#BF092F")
 
                     elif skill_stop_btn.checkForInput(MOUSE_POS):
                         if skill_points >= skill_costs[skill_stop_btn]:
                             if time_stopped_for_card:
-                                sfx_func("SFX/mambo.mp3")
+                                sfx_func(sfx)
                                 log("Time Stop Already Activated!, But How", "#93BFC7")
                             else:
                                 sfx_func("SFX/time-stop.mp3")
@@ -917,7 +916,7 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                                 skill_used_this_turn = True 
                                 pygame.mixer.music.pause()
                         else:
-                            sfx_func("SFX/mambo.mp3")
+                            sfx_func(sfx)
                             log("Not enough SP!", "#BF092F")
 
                     elif skill_maxhp_btn.checkForInput(MOUSE_POS):
@@ -938,7 +937,7 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                                 sfx_func("SFX/Click.mp3")
                                 skill_used_this_turn = True 
                         else:
-                            sfx_func("SFX/mambo.mp3")
+                            sfx_func(sfx)
                             log("Not enough SP!", "#BF092F")
 
         #Game State Logic
