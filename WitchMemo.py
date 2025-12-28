@@ -605,7 +605,7 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
         temp_boss_name = ""
         if BOSS_SPRITE_CACHE:
             temp_boss_name = random.choice(BOSS_SPRITE_CACHE)[0] #สุ่มชื่อไฟล์บอสชั่วคราว
-            if "lost_memory" in temp_boss_name:
+            if "lost_memory" in temp_boss_name.lower():
                 is_lost_memory_boss = True
 
         if is_lost_memory_boss:
@@ -648,33 +648,47 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
         else: # 3
             positions_y = [screen_height // 2 - 250, screen_height // 2, screen_height // 2 + 250]
 
+        # ... (โค้ดส่วนบนของ battle_screen เหมือนเดิม จนถึง for loop) ...
+
         for i in range(monsters_count):
             if is_boss_stage and is_lost_memory_boss:
                 found = False
                 for fname, img in active_cache:
-                    if "lost_memory" in fname:
+                    if "lost_memory" in fname.lower(): # ใส่ .lower()
                         filename, sprite_img = fname, img
                         found = True
                         break
-                if not found: # (กันเหนียว)
+                if not found:
                     filename, sprite_img = random.choice(active_cache)
             
             elif is_boss_stage:
-                # (สุ่มบอสตัวอื่นที่ไม่ใช่ lost_memory)
-                non_lm_cache = [pair for pair in active_cache if "lost_memory" not in pair[0]]
+                # พยายามสุ่มตัวที่ไม่ใช่ lost_memory ก่อน
+                non_lm_cache = [pair for pair in active_cache if "lost_memory" not in pair[0].lower()]
                 if non_lm_cache:
                     filename, sprite_img = random.choice(non_lm_cache)
-                else: # (ถ้ามีแต่ lost_memory)
+                else:
+                    # ถ้าไม่มีตัวอื่นเลย ก็ต้องใช้ lost_memory
                     filename, sprite_img = random.choice(active_cache)
             
-            else: # (มอนสเตอร์ปกติ)
+            else: # มอนสเตอร์ปกติ
                 filename, sprite_img = random.choice(active_cache)
 
-            is_shroom_boss = "shroom_boss" in filename.lower()
-            is_wild_deer_boss = "wild_deer" in filename.lower()
+            # --- จุดสำคัญที่ต้องแก้: เช็คชื่อไฟล์ตรงนี้ให้ชัวร์ ---
+            filename_lower = filename.lower()
+            is_shroom_boss = "shroom_boss" in filename_lower
+            is_wild_deer_boss = "wild_deer" in filename_lower
+            
+            # สร้างตัวแปรเช็คชื่อไฟล์ Lost Memory โดยเฉพาะ
+            current_is_lost_memory = "lost_memory" in filename_lower
 
-            # [LOST_MEMORY]
-            if is_lost_memory_boss:
+            # ถ้าสุ่มเจอไฟล์ Lost Memory ให้บังคับเปิดระบบบอสลับทันที (แก้บัค Logic ไม่ตรงกัน)
+            if current_is_lost_memory:
+                is_lost_memory_boss = True
+                # รีเซ็ตเลือดให้เป็น 0 ตาม mechanic ของบอสตัวนี้
+                if i < len(monster_hp): monster_hp[i] = 0
+
+            # --- ตั้งค่าตำแหน่ง X ---
+            if current_is_lost_memory:
                 monster_sprite_size = (300, 300)
                 monster_x_pos = screen_width - (300 // 2) - 220
             else:
@@ -684,33 +698,40 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                 else:
                     monster_x_pos = screen_width - (default_monster_size[0] // 2) - 340
 
+            # --- โหลดรูปภาพ / แอนิเมชั่น ---
             if is_shroom_boss:
-                monster_sprite_size = (330, 612)
                 sprite_img_scaled = SHROOM_BOSS_ANIMATION
-            elif is_lost_memory_boss:
-                monster_sprite_size = (300, 300)
-                sprite_img_scaled = pygame.transform.scale(sprite_img, monster_sprite_size)
-            elif is_wild_deer_boss:
-                monster_sprite_size = (462, 600)
-                sprite_img_scaled = WILD_BOSS_ANIMATION
-            else:
-                monster_sprite_size = default_monster_size
-                sprite_img_scaled = pygame.transform.scale(sprite_img, monster_sprite_size)
+                sprite_rect = SHROOM_BOSS_ANIMATION[0].get_rect(center=(monster_x_pos, positions_y[i]))
             
-            sprite_rect = sprite_img_scaled.get_rect(center=(monster_x_pos, positions_y[i])) if not is_shroom_boss and not is_wild_deer_boss else SHROOM_BOSS_ANIMATION[0].get_rect(center=(monster_x_pos, positions_y[i]))
+            elif is_wild_deer_boss:
+                sprite_img_scaled = WILD_BOSS_ANIMATION
+                sprite_rect = WILD_BOSS_ANIMATION[0].get_rect(center=(monster_x_pos, positions_y[i]))
+            
+            elif current_is_lost_memory: # ใช้ตัวแปรใหม่ที่เช็คจากชื่อไฟล์
+                sprite_img_scaled = LOST_MEMORY_BOSS_ANIMATION
+                # ใช้เฟรมแรกในการหาตำแหน่ง (rect)
+                sprite_rect = LOST_MEMORY_BOSS_ANIMATION[0].get_rect(center=(monster_x_pos, positions_y[i]))
+            
+            else:
+                # กรณีมอนสเตอร์ทั่วไป (ภาพนิ่ง)
+                sprite_img_scaled = pygame.transform.scale(sprite_img, monster_sprite_size)
+                sprite_rect = sprite_img_scaled.get_rect(center=(monster_x_pos, positions_y[i]))
             
             assigned_monster_sprites.append(sprite_img_scaled)
             monster_sprite_rects.append(sprite_rect)
 
-            if is_shroom_boss or is_wild_deer_boss:
-                # Use the size from our global variable
+            # --- สร้าง Overlay สีแดงตอนโดนตี ---
+            if is_shroom_boss or is_wild_deer_boss or current_is_lost_memory:
+                # ถ้าเป็นแอนิเมชั่น ให้สร้าง overlay ขนาดเท่ากรอบ
                 overlay_surf = pygame.Surface(monster_sprite_size, pygame.SRCALPHA)
             else:
-                # Use the size from the static scaled image
+                # ถ้าเป็นภาพนิ่ง ให้สร้างเท่าขนาดภาพ
                 overlay_surf = pygame.Surface(sprite_img_scaled.get_size(), pygame.SRCALPHA)
             
             overlay_surf.fill((255, 0, 0, 30))
             monster_red_overlays.append(overlay_surf)
+
+        # ... (จบ loop แล้วโค้ดส่วนอื่นเหมือนเดิม) ...
 
 
     selected_battle_bg = random_battle_bg()
@@ -882,6 +903,8 @@ def battle_screen(deck_name, count_cards, is_boss_stage):
                 monster_anim_last_updates[i] = now
                 if is_shroom_boss :
                     monster_anim_indices[i] = (monster_anim_indices[i] + 1) % SHROOM_BOSS_FRAME_COUNT
+                elif is_lost_memory_boss:
+                    monster_anim_indices[i] = (monster_anim_indices[i] + 1) % LOST_MEMORY_BOSS_FRAME_COUNT
                 elif is_wild_deer_boss:
                     monster_anim_indices[i] = (monster_anim_indices[i] + 1) % WILD_BOSS_FRAME_COUNT
 
@@ -2494,5 +2517,8 @@ SHROOM_BOSS_ANIMATION = load_animation_frames("Image/Monster/Boss/shroom_boss_sp
 SHROOM_BOSS_FRAME_COUNT = 10
 WILD_BOSS_ANIMATION = load_animation_frames("Image/Monster/Boss/Wild_Deer_spritesheet.png", 14, 156, 200, (462, 600))
 WILD_BOSS_FRAME_COUNT = 14
+
+LOST_MEMORY_BOSS_ANIMATION = load_animation_frames("Image/Monster/Boss/lost_memory_spritesheet.png", 12, 68, 87, (272, 348))
+LOST_MEMORY_BOSS_FRAME_COUNT = 12
 
 intro()
